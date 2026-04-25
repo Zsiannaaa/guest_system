@@ -1,0 +1,251 @@
+<?php
+/**
+ * includes/helpers.php
+ * General utility/helper functions
+ *
+ * Contains: CSRF protection, formatting, flash messages,
+ *           status display helpers, and query helpers.
+ * No direct DB queries beyond getCountQuery (convenience).
+ */
+
+// ─────────────────────────────────────────────────────────────
+// CSRF PROTECTION
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Generate or retrieve the current CSRF token.
+ * Stored in $_SESSION so it persists across page loads.
+ */
+function csrfToken(): string {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * Return a hidden input field for embedding CSRF tokens in forms.
+ */
+function csrfField(): string {
+    return '<input type="hidden" name="csrf_token" value="' . csrfToken() . '">';
+}
+
+/**
+ * Verify the CSRF token submitted via POST.
+ * On failure, sets a flash error and redirects to $fallbackUrl.
+ *
+ * @param string $fallbackUrl URL to redirect to on failure
+ */
+function verifyCsrf(string $fallbackUrl): void {
+    $submitted = $_POST['csrf_token'] ?? '';
+    if (!hash_equals(csrfToken(), $submitted)) {
+        setFlash('error', 'Invalid security token. Please try again.');
+        redirect($fallbackUrl);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// VISITOR REFERENCE & QR
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Generate a unique visit reference number.
+ * Format: GST-YYYYMMDD-XXXX (e.g. GST-20260418-0023)
+ */
+function generateVisitReference(): string {
+    $db = getDB();
+    $today = date('Ymd');
+    $prefix = VISIT_REF_PREFIX . '-' . $today . '-';
+
+    $stmt = $db->prepare("
+        SELECT visit_reference FROM guest_visits
+        WHERE visit_reference LIKE :prefix
+        ORDER BY visit_id DESC LIMIT 1
+    ");
+    $stmt->execute([':prefix' => $prefix . '%']);
+    $last = $stmt->fetchColumn();
+
+    if ($last) {
+        $lastNum = (int) substr($last, -4);
+        $nextNum = $lastNum + 1;
+    } else {
+        $nextNum = 1;
+    }
+
+    return $prefix . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+}
+
+/**
+ * Generate a unique QR token string.
+ */
+function generateQrToken(): string {
+    return 'QR-' . strtoupper(bin2hex(random_bytes(8)));
+}
+
+// ─────────────────────────────────────────────────────────────
+// SANITIZATION & FORMATTING
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Sanitize a string for safe HTML output.
+ */
+function e(string $str): string {
+    return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * Format a datetime string for display.
+ */
+function formatDateTime(?string $datetime, string $format = 'M d, Y h:i A'): string {
+    if (!$datetime) return '—';
+    return date($format, strtotime($datetime));
+}
+
+/**
+ * Format a date string for display.
+ */
+function formatDate(?string $date, string $format = 'M d, Y'): string {
+    if (!$date) return '—';
+    return date($format, strtotime($date));
+}
+
+/**
+ * Format a time string for display.
+ */
+function formatTime(?string $time): string {
+    if (!$time) return '—';
+    return date('h:i A', strtotime($time));
+}
+
+/**
+ * Return a human-readable label for a status.
+ */
+function statusLabel(string $status): string {
+    return match ($status) {
+        'pending'        => 'Pending',
+        'checked_in'     => 'Checked In',
+        'checked_out'    => 'Checked Out',
+        'cancelled'      => 'Cancelled',
+        'overstayed'     => 'Overstayed',
+        'arrived'        => 'Arrived',
+        'in_service'     => 'In Service',
+        'completed'      => 'Completed',
+        'pre_registered' => 'Pre-Registered',
+        'walk_in'        => 'Walk-in',
+        'admin'          => 'Administrator',
+        'guard'          => 'Guard / Reception',
+        'office_staff'   => 'Office Staff',
+        default          => ucfirst(str_replace('_', ' ', $status)),
+    };
+}
+
+/**
+ * Legacy badge helpers (kept for backward compat).
+ */
+function visitStatusBadge(string $status): string {
+    return match ($status) {
+        'pending'     => 'bg-warning text-dark',
+        'checked_in'  => 'bg-success',
+        'checked_out' => 'bg-secondary',
+        'cancelled'   => 'bg-danger',
+        'overstayed'  => 'bg-danger',
+        default       => 'bg-light text-dark',
+    };
+}
+
+function destStatusBadge(string $status): string {
+    return match ($status) {
+        'pending'    => 'bg-warning text-dark',
+        'arrived'    => 'bg-info',
+        'in_service' => 'bg-primary',
+        'completed'  => 'bg-success',
+        'cancelled'  => 'bg-danger',
+        default      => 'bg-light text-dark',
+    };
+}
+
+function roleBadge(string $role): string {
+    return match ($role) {
+        'admin'        => 'bg-danger',
+        'guard'        => 'bg-primary',
+        'office_staff' => 'bg-info',
+        default        => 'bg-secondary',
+    };
+}
+
+// ─────────────────────────────────────────────────────────────
+// REQUEST HELPERS
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Check if the request method is POST.
+ */
+function isPost(): bool {
+    return $_SERVER['REQUEST_METHOD'] === 'POST';
+}
+
+/**
+ * Redirect to a URL and stop execution.
+ */
+function redirect(string $url): void {
+    header('Location: ' . $url);
+    exit;
+}
+
+/**
+ * Safely cast a GET/POST parameter to int.
+ * Returns 0 if missing or invalid. Used to prevent URL tampering.
+ */
+function inputInt(string $key, string $method = 'GET'): int {
+    $source = $method === 'POST' ? $_POST : $_GET;
+    return max(0, (int)($source[$key] ?? 0));
+}
+
+/**
+ * Safely get a trimmed string from GET/POST.
+ */
+function inputStr(string $key, string $method = 'POST'): string {
+    $source = $method === 'POST' ? $_POST : $_GET;
+    return trim($source[$key] ?? '');
+}
+
+// ─────────────────────────────────────────────────────────────
+// FLASH MESSAGES
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Store a flash message in session.
+ */
+function setFlash(string $type, string $message): void {
+    $_SESSION['flash'] = ['type' => $type, 'message' => $message];
+}
+
+/**
+ * Get and clear the flash message from session.
+ */
+function getFlash(): ?array {
+    if (!empty($_SESSION['flash'])) {
+        $flash = $_SESSION['flash'];
+        unset($_SESSION['flash']);
+        return $flash;
+    }
+    return null;
+}
+
+/**
+ * Mask a string (show only last 4 characters).
+ */
+function maskId(string $id): string {
+    if (strlen($id) <= 4) return $id;
+    return str_repeat('*', strlen($id) - 4) . substr($id, -4);
+}
+
+/**
+ * Get counts for a simple dashboard stat query.
+ */
+function getCountQuery(string $sql, array $params = []): int {
+    $db   = getDB();
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    return (int) $stmt->fetchColumn();
+}

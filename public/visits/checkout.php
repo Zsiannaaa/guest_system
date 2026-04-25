@@ -1,0 +1,274 @@
+<?php
+/**
+ * visits/checkout.php — Guard Check-Out
+ */
+require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/../../config/constants.php';
+require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/helpers.php';
+require_once __DIR__ . '/../../modules/visits_module.php';
+requireRole([ROLE_GUARD, ROLE_ADMIN]);
+$pageTitle = 'Guest Check-Out';
+$db = getDB();
+$visit = null; $destinations = []; $searchError = ''; $searchResult = null;
+$directId = isset($_GET['id']) ? (int)$_GET['id'] : null;
+$query = trim($_GET['q'] ?? '');
+
+$activeStmt = $db->query("
+    SELECT gv.visit_id, gv.visit_reference, gv.actual_check_in, gv.visit_date,
+           gv.registration_type, gv.has_vehicle,
+           g.full_name AS guest_name, g.contact_number, g.organization,
+           GROUP_CONCAT(o.office_name ORDER BY vd.sequence_no SEPARATOR ', ') AS destinations
+    FROM guest_visits gv
+    JOIN guests g ON gv.guest_id = g.guest_id
+    LEFT JOIN visit_destinations vd ON gv.visit_id = vd.visit_id
+    LEFT JOIN offices o ON vd.office_id = o.office_id
+    WHERE gv.overall_status = 'checked_in'
+    GROUP BY gv.visit_id
+    ORDER BY gv.actual_check_in DESC
+    LIMIT 300
+");
+$activeVisitors = $activeStmt->fetchAll();
+
+if (isset($_GET['search']) || $directId) {
+    if ($directId) {
+        $stmt = $db->prepare("SELECT gv.*, g.full_name AS guest_name, g.contact_number, g.organization FROM guest_visits gv JOIN guests g ON gv.guest_id=g.guest_id WHERE gv.visit_id=:id AND gv.overall_status='checked_in'");
+        $stmt->execute([':id'=>$directId]);
+    } elseif (!empty($query)) {
+        $stmt = $db->prepare("SELECT gv.*, g.full_name AS guest_name, g.contact_number, g.organization FROM guest_visits gv JOIN guests g ON gv.guest_id=g.guest_id WHERE gv.overall_status='checked_in' AND (gv.visit_reference=:q1 OR gv.qr_token=:q2 OR g.full_name LIKE :q3) ORDER BY gv.actual_check_in DESC LIMIT 5");
+        $stmt->execute([':q1'=>$query,':q2'=>$query,':q3'=>"%{$query}%"]);
+    }
+    if (isset($stmt)) {
+        $results = $stmt->fetchAll();
+        if (count($results)===1) $visit=$results[0]; elseif (count($results)>1) $searchResult=$results;
+        else $searchError = 'No active visitors found matching your search.';
+    }
+    if ($visit) {
+        $destStmt = $db->prepare("SELECT vd.*, o.office_name FROM visit_destinations vd JOIN offices o ON vd.office_id=o.office_id WHERE vd.visit_id=:vid ORDER BY vd.sequence_no");
+        $destStmt->execute([':vid'=>$visit['visit_id']]); $destinations = $destStmt->fetchAll();
+    }
+}
+
+if (isPost() && isset($_POST['confirm_checkout'])) {
+    verifyCsrf(APP_URL . '/public/visits/checkout.php');
+    $visitId = (int)($_POST['visit_id'] ?? 0);
+    $checkStmt = $db->prepare("SELECT gv.*, g.full_name AS guest_name FROM guest_visits gv JOIN guests g ON gv.guest_id=g.guest_id WHERE gv.visit_id=:vid AND gv.overall_status='checked_in'");
+    $checkStmt->execute([':vid'=>$visitId]); $toCheckOut = $checkStmt->fetch();
+    if (!$toCheckOut) { setFlash('error','Not in checked-in status.'); redirect(APP_URL.'/public/visits/checkout.php'); }
+    $db->beginTransaction();
+    $db->prepare("UPDATE guest_visits SET overall_status='checked_out', actual_check_out=NOW() WHERE visit_id=:vid")->execute([':vid'=>$visitId]);
+    $db->prepare("UPDATE visit_destinations SET destination_status='completed', completed_time=NOW() WHERE visit_id=:vid AND destination_status IN('arrived','in_service')")->execute([':vid'=>$visitId]);
+    logActivity($visitId, 'check_out', currentUserId(), null, "Checked out '{$toCheckOut['guest_name']}'");
+    $db->commit();
+    setFlash('success',"<strong>{$toCheckOut['guest_name']}</strong> has been checked out.");
+    redirect(APP_URL.'/public/visits/view.php?id='.$visitId);
+}
+
+include __DIR__ . '/../../includes/header.php';
+?>
+
+<div class="page-top">
+  <div>
+    <div class="page-title">Guest Check-Out</div>
+    <ul class="breadcrumb"><li><a href="<?= getDashboardUrl() ?>">Dashboard</a></li><li>Check-Out</li></ul>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header"><i data-lucide="search" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Find Active Guest</div>
+  <div class="card-body">
+    <form method="GET" style="display:flex;gap:12px;">
+      <div class="table-search" style="flex:1;max-width:none;">
+        <i data-lucide="search" class="table-search-icon"></i>
+        <input type="text" id="activeSearchInput" name="q" value="<?= e($query) ?>" placeholder="Type reference number, QR token, or guest name..." autofocus autocomplete="off" style="padding:11px 12px 11px 36px;">
+      </div>
+      <button type="submit" name="search" class="btn btn-primary"><i data-lucide="search"></i> Search</button>
+    </form>
+  </div>
+</div>
+
+<?php if ($searchError): ?>
+<div class="info-box warning"><i data-lucide="alert-triangle"></i><div><?= e($searchError) ?></div></div>
+<?php endif; ?>
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header" style="justify-content:space-between;">
+    <span><i data-lucide="users" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Active Visitors Ready for Check-Out</span>
+    <span style="font-size:.8rem;color:var(--text-m);font-weight:500;"><span id="activeVisibleCount"><?= count($activeVisitors) ?></span> of <?= count($activeVisitors) ?> active</span>
+  </div>
+  <div class="table-responsive">
+    <table class="data-table" id="activeVisitorsTable">
+      <thead><tr><th>Guest</th><th>Reference</th><th>Destination</th><th>Checked In</th><th>Type</th><th></th></tr></thead>
+      <tbody>
+      <?php foreach ($activeVisitors as $r): ?>
+      <tr data-search="<?= e(strtolower(($r['guest_name'] ?? '') . ' ' . ($r['visit_reference'] ?? '') . ' ' . ($r['contact_number'] ?? '') . ' ' . ($r['organization'] ?? '') . ' ' . ($r['destinations'] ?? ''))) ?>">
+        <td>
+          <div class="guest-cell">
+            <div class="guest-avatar"><?= strtoupper(substr($r['guest_name'],0,1)) ?></div>
+            <div>
+              <div class="guest-name"><?= e($r['guest_name']) ?></div>
+              <div class="guest-ref"><?= e($r['organization'] ?? '') ?></div>
+            </div>
+          </div>
+        </td>
+        <td><span class="ref-chip"><?= e($r['visit_reference']) ?></span></td>
+        <td style="font-size:.83rem;"><?= e($r['destinations'] ?: 'No destination') ?></td>
+        <td style="font-size:.83rem;"><?= formatDateTime($r['actual_check_in']) ?></td>
+        <td><span class="badge <?= $r['registration_type']==='walk_in'?'badge-warning':'badge-blue' ?>"><?= $r['registration_type']==='walk_in'?'Walk-in':'Pre-Reg' ?></span></td>
+        <td><a href="?id=<?= $r['visit_id'] ?>" class="btn-tbl btn-tbl-warn"><i data-lucide="log-out"></i> Check Out</a></td>
+      </tr>
+      <?php endforeach; ?>
+      <tr id="activeNoRows" style="display:<?= empty($activeVisitors) ? '' : 'none' ?>;">
+        <td colspan="6"><div class="table-empty"><?= empty($activeVisitors) ? 'No active visitors inside campus.' : 'No active visitors match your search.' ?></div></td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<?php if ($searchResult): ?>
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">Select Guest to Check Out</div>
+  <div class="card-body p-0"><div class="table-responsive">
+    <table class="data-table">
+      <thead><tr><th>Reference</th><th>Guest</th><th>Check-In Time</th><th></th></tr></thead>
+      <tbody>
+      <?php foreach ($searchResult as $r): ?>
+      <tr>
+        <td><span class="ref-chip"><?= e($r['visit_reference']) ?></span></td>
+        <td class="fw-600"><?= e($r['guest_name']) ?></td>
+        <td><?= formatDateTime($r['actual_check_in']) ?></td>
+        <td><a href="?id=<?= $r['visit_id'] ?>" class="btn-tbl btn-tbl-warn"><i data-lucide="arrow-right"></i> Select</a></td>
+      </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div></div>
+</div>
+<?php endif; ?>
+
+<?php if ($visit): ?>
+<style>
+.checkout-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;}
+.checkout-modal{width:min(1040px,96vw);max-height:92vh;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 22px 70px rgba(15,23,42,.28);}
+.checkout-modal-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#fff;border-bottom:1px solid var(--border);}
+.checkout-modal-title{display:flex;align-items:center;gap:8px;font-size:1rem;font-weight:800;color:#9a5b00;}
+.checkout-modal-close{width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--text-s);cursor:pointer;}
+.checkout-modal-close:hover{background:#fff7ed;color:#9a3412;border-color:#fed7aa;}
+.checkout-modal-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;padding:18px;background:var(--bg);}
+@media(max-width:900px){.checkout-modal-backdrop{align-items:flex-start;padding:12px;}.checkout-modal-grid{grid-template-columns:1fr;}.checkout-modal{max-height:96vh;}}
+</style>
+<div class="checkout-modal-backdrop" id="checkoutModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="checkoutModalTitle">
+<div class="checkout-modal">
+  <div class="checkout-modal-head">
+    <div class="checkout-modal-title" id="checkoutModalTitle">
+      <i data-lucide="log-out" style="width:18px;height:18px;"></i>
+      Check Out <?= e($visit['guest_name']) ?>
+    </div>
+    <button type="button" class="checkout-modal-close" id="checkoutModalClose" title="Close">
+      <i data-lucide="x" style="width:18px;height:18px;"></i>
+    </button>
+  </div>
+<div class="checkout-modal-grid">
+  <div class="card">
+    <div class="card-header"><i data-lucide="clipboard-list" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Active Visit Details</div>
+    <div class="card-body">
+      <dl style="margin:0;">
+        <div class="detail-row"><dt>Reference</dt><dd><span class="ref-chip"><?= e($visit['visit_reference']) ?></span></dd></div>
+        <div class="detail-row"><dt>Guest Name</dt><dd style="font-weight:700;"><?= e($visit['guest_name']) ?></dd></div>
+        <div class="detail-row"><dt>Organization</dt><dd><?= e($visit['organization'] ?? '—') ?></dd></div>
+        <div class="detail-row"><dt>Purpose</dt><dd><?= e($visit['purpose_of_visit']) ?></dd></div>
+        <div class="detail-row"><dt>Check-In Time</dt><dd style="color:var(--success);font-weight:700;"><?= formatDateTime($visit['actual_check_in']) ?></dd></div>
+        <div class="detail-row"><dt>Vehicle</dt><dd><?= $visit['has_vehicle'] ? '<span class="badge badge-info"><i data-lucide="car" style="width:11px;height:11px;"></i> Yes</span>' : '—' ?></dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header"><i data-lucide="building-2" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Office Visit Status</div>
+      <div class="card-body" style="padding:0;">
+        <?php foreach ($destinations as $d): ?>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);">
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span class="badge badge-secondary">#<?= $d['sequence_no'] ?></span>
+            <span style="font-weight:600;font-size:.875rem;"><?= e($d['office_name']) ?></span>
+            <?php if ($d['is_unplanned']): ?><span class="badge badge-warning" style="font-size:.6rem;">unplanned</span><?php endif; ?>
+          </span>
+          <span class="badge <?= $d['destination_status']==='completed' ? 'badge-success' : ($d['destination_status']==='pending' ? 'badge-warning' : 'badge-info') ?>">
+            <?= statusLabel($d['destination_status']) ?>
+          </span>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:var(--warning);">
+      <div class="card-header" style="background:var(--warning);color:#1a2744;">
+        <span><i data-lucide="log-out" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Confirm Check-Out</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size:.9rem;margin-bottom:14px;">
+          Checking out <strong><?= e($visit['guest_name']) ?></strong>.<br>
+          Any in-progress office visits will be marked as completed.
+        </p>
+        <form method="POST">
+        <?= csrfField() ?>
+          <input type="hidden" name="visit_id" value="<?= $visit['visit_id'] ?>">
+          <div class="check-item" style="margin-bottom:14px;">
+            <input type="checkbox" id="confirmExit" required>
+            <label for="confirmExit">Guest has returned all passes/badges (if any).</label>
+          </div>
+          <button type="submit" name="confirm_checkout" class="btn w-100" style="justify-content:center;padding:12px;font-size:.95rem;background:var(--warning);color:#1a2744;font-weight:700;">
+            <i data-lucide="log-out"></i> Check Out Guest
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+<?php endif; ?>
+
+<script>
+const activeSearchInput = document.getElementById('activeSearchInput');
+const activeTable = document.getElementById('activeVisitorsTable');
+const activeVisibleCount = document.getElementById('activeVisibleCount');
+const activeNoRows = document.getElementById('activeNoRows');
+const checkoutModalBackdrop = document.getElementById('checkoutModalBackdrop');
+const checkoutModalClose = document.getElementById('checkoutModalClose');
+
+function closeCheckoutModal() {
+  window.location.href = '<?= APP_URL ?>/public/visits/checkout.php';
+}
+
+function filterActiveVisitors() {
+  if (!activeTable) return;
+  const q = (activeSearchInput?.value || '').toLowerCase().trim();
+  let visible = 0;
+  activeTable.querySelectorAll('tbody tr[data-search]').forEach(row => {
+    const ok = !q || row.dataset.search.includes(q);
+    row.style.display = ok ? '' : 'none';
+    if (ok) visible++;
+  });
+  if (activeVisibleCount) activeVisibleCount.textContent = visible;
+  if (activeNoRows) {
+    activeNoRows.style.display = visible ? 'none' : '';
+    const empty = activeNoRows.querySelector('.table-empty');
+    if (empty) empty.textContent = q ? 'No active visitors match your search.' : 'No active visitors inside campus.';
+  }
+}
+
+activeSearchInput?.addEventListener('input', filterActiveVisitors);
+filterActiveVisitors();
+checkoutModalClose?.addEventListener('click', closeCheckoutModal);
+checkoutModalBackdrop?.addEventListener('click', event => {
+  if (event.target === checkoutModalBackdrop) closeCheckoutModal();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && checkoutModalBackdrop) closeCheckoutModal();
+});
+lucide.createIcons();
+</script>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>
