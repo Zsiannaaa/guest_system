@@ -68,12 +68,61 @@ include __DIR__ . '/../../includes/header.php';
 </div>
 
 <!-- Summary Stats -->
-<div class="stats-grid" style="margin-bottom:20px;">
-  <div class="stat-card stat-navy"><div class="stat-icon"><i data-lucide="file-text"></i></div><div class="stat-value"><?= $summary['total_visits'] ?></div><div class="stat-label">Total Visits</div></div>
-  <div class="stat-card stat-purple"><div class="stat-icon"><i data-lucide="footprints"></i></div><div class="stat-value"><?= $summary['walk_ins'] ?></div><div class="stat-label">Walk-Ins</div></div>
-  <div class="stat-card stat-teal"><div class="stat-icon"><i data-lucide="calendar-check"></i></div><div class="stat-value"><?= $summary['pre_registered'] ?></div><div class="stat-label">Pre-Registered</div></div>
-  <div class="stat-card stat-info"><div class="stat-icon"><i data-lucide="car"></i></div><div class="stat-value"><?= $summary['with_vehicle'] ?></div><div class="stat-label">With Vehicle</div></div>
-  <div class="stat-card stat-success"><div class="stat-icon"><i data-lucide="users"></i></div><div class="stat-value"><?= $summary['unique_guests'] ?></div><div class="stat-label">Unique Guests</div></div>
+<div class="stat-grid reports-summary-grid">
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <div>
+        <div class="stat-value"><?= $summary['total_visits'] ?></div>
+        <div class="stat-label">Total Visits</div>
+      </div>
+      <div class="stat-icon-wrap blue"><i data-lucide="file-text"></i></div>
+    </div>
+    <div class="stat-trend" style="color:var(--text-m);">Selected date range</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <div>
+        <div class="stat-value"><?= $summary['walk_ins'] ?></div>
+        <div class="stat-label">Walk-Ins</div>
+      </div>
+      <div class="stat-icon-wrap green"><i data-lucide="footprints"></i></div>
+    </div>
+    <div class="stat-trend" style="color:var(--text-m);">Gate registrations</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <div>
+        <div class="stat-value"><?= $summary['pre_registered'] ?></div>
+        <div class="stat-label">Pre-Registered</div>
+      </div>
+      <div class="stat-icon-wrap purple"><i data-lucide="calendar-check"></i></div>
+    </div>
+    <div class="stat-trend" style="color:var(--text-m);">Online registrations</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <div>
+        <div class="stat-value"><?= $summary['with_vehicle'] ?></div>
+        <div class="stat-label">With Vehicle</div>
+      </div>
+      <div class="stat-icon-wrap orange"><i data-lucide="car"></i></div>
+    </div>
+    <div class="stat-trend" style="color:var(--text-m);">Vehicle entries</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card-top">
+      <div>
+        <div class="stat-value"><?= $summary['unique_guests'] ?></div>
+        <div class="stat-label">Unique Guests</div>
+      </div>
+      <div class="stat-icon-wrap red"><i data-lucide="users"></i></div>
+    </div>
+    <div class="stat-trend" style="color:var(--text-m);">Distinct visitors</div>
+  </div>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">

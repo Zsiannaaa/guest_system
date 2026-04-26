@@ -18,6 +18,15 @@ $vStmt = $db->prepare("SELECT gv.*, u.full_name AS guard_name, GROUP_CONCAT(o.of
 $vStmt->execute([':gid'=>$guestId]); $visits = $vStmt->fetchAll();
 $rStmt = $db->prepare("SELECT r.*, u.full_name AS restricted_by FROM restricted_guests r LEFT JOIN users u ON r.restricted_by_user_id=u.user_id WHERE r.guest_id=:gid AND r.is_active=1 LIMIT 1");
 $rStmt->execute([':gid'=>$guestId]); $restriction = $rStmt->fetch();
+$vehStmt = $db->prepare("
+    SELECT ve.*, gv.visit_reference, gv.visit_date
+    FROM vehicle_entries ve
+    JOIN guest_visits gv ON gv.visit_id=ve.visit_id
+    WHERE gv.guest_id=:gid
+    ORDER BY gv.visit_date DESC, gv.created_at DESC, ve.created_at DESC
+    LIMIT 1
+");
+$vehStmt->execute([':gid'=>$guestId]); $vehicle = $vehStmt->fetch();
 include __DIR__ . '/../../includes/header.php';
 ?>
 
@@ -25,6 +34,9 @@ include __DIR__ . '/../../includes/header.php';
   <div><div class="page-title">Guest Profile</div>
   <ul class="breadcrumb"><li><a href="<?= getDashboardUrl() ?>">Dashboard</a></li><li><a href="<?= APP_URL ?>/public/guests/list.php">Guests</a></li><li><?= e($guest['full_name']) ?></li></ul></div>
   <div class="page-actions">
+    <a href="<?= APP_URL ?>/public/guests/export.php?id=<?= $guestId ?>" class="btn btn-outline">
+      <i data-lucide="download"></i> Export Profile
+    </a>
     <?php if (isAdmin() && !$guest['is_restricted']): ?>
     <a href="<?= APP_URL ?>/public/guests/restrict.php?id=<?= $guestId ?>" class="btn btn-outline" style="color:var(--danger);border-color:var(--danger);"><i data-lucide="shield-off"></i> Restrict</a>
     <?php elseif (isAdmin() && $guest['is_restricted']): ?>
@@ -41,7 +53,8 @@ include __DIR__ . '/../../includes/header.php';
 <?php endif; ?>
 
 <div style="display:grid;grid-template-columns:380px 1fr;gap:20px;">
-  <div class="card">
+  <div>
+  <div class="card" style="margin-bottom:16px;">
     <div class="card-header"><i data-lucide="user" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Personal Information</div>
     <div class="card-body" style="text-align:center;padding:24px;">
       <div class="guest-avatar" style="width:64px;height:64px;font-size:1.6rem;margin:0 auto 12px;<?= $guest['is_restricted']?'background:var(--danger-l);color:var(--danger);':'' ?>"><?= strtoupper(substr($guest['full_name'],0,1)) ?></div>
@@ -58,6 +71,31 @@ include __DIR__ . '/../../includes/header.php';
         <div class="detail-row" style="padding:10px 18px;"><dt>Total Visits</dt><dd><span class="badge badge-primary"><?= count($visits) ?></span></dd></div>
       </dl>
     </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><i data-lucide="car" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Vehicle Information</div>
+    <?php if ($vehicle): ?>
+    <div class="card-body" style="padding:0;">
+      <dl style="margin:0;">
+        <div class="detail-row" style="padding:10px 18px;"><dt>Plate Number</dt><dd style="font-weight:700;"><?= e($vehicle['plate_number']) ?></dd></div>
+        <div class="detail-row" style="padding:10px 18px;"><dt>Type</dt><dd><?= e(statusLabel($vehicle['vehicle_type'])) ?></dd></div>
+        <div class="detail-row" style="padding:10px 18px;"><dt>Color</dt><dd><?= e($vehicle['vehicle_color'] ?? 'â€”') ?></dd></div>
+        <div class="detail-row" style="padding:10px 18px;"><dt>Model</dt><dd><?= e($vehicle['vehicle_model'] ?? 'â€”') ?></dd></div>
+        <div class="detail-row" style="padding:10px 18px;"><dt>Driver</dt><dd><?= e($vehicle['driver_name'] ?: ($vehicle['is_driver_the_guest'] ? $guest['full_name'] : 'â€”')) ?></dd></div>
+        <div class="detail-row" style="padding:10px 18px;"><dt>Recorded Visit</dt><dd style="font-size:.8rem;"><a href="<?= APP_URL ?>/public/visits/view.php?id=<?= $vehicle['visit_id'] ?>" style="color:var(--accent);font-weight:700;"><?= e($vehicle['visit_reference']) ?></a><br><?= formatDate($vehicle['visit_date']) ?></dd></div>
+      </dl>
+    </div>
+    <?php else: ?>
+    <div class="card-body" style="text-align:center;padding:26px 18px;">
+      <div style="width:52px;height:52px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:var(--text-m);">
+        <i data-lucide="car-off" style="width:24px;height:24px;"></i>
+      </div>
+      <div style="font-weight:700;color:var(--text);">No vehicle recorded</div>
+      <div style="font-size:.82rem;color:var(--text-m);margin-top:4px;">This guest has no visit with vehicle details yet.</div>
+    </div>
+    <?php endif; ?>
+  </div>
   </div>
 
   <div class="card">

@@ -33,6 +33,9 @@ include __DIR__ . '/../../includes/header.php';
     </ul>
   </div>
   <div class="page-actions">
+    <a href="<?= APP_URL ?>/public/guests/export.php" class="btn btn-outline">
+      <i data-lucide="download"></i> Export Guests
+    </a>
     <?php if (isAdminOrGuard()): ?>
     <a href="<?= APP_URL ?>/public/visits/walkin.php" class="btn btn-primary">
       <i data-lucide="user-plus"></i> Register Walk-In
