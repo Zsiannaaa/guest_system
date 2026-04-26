@@ -31,6 +31,14 @@ include __DIR__ . '/includes/public_header.php';
     </section>
 
     <section class="landing-actions" aria-label="Guest monitoring actions">
+      <div class="landing-action-brand">
+        <img src="<?= APP_URL ?>/assets/images/spud_logo.png" alt="St Paul University Dumaguete">
+        <div>
+          <div class="landing-uni">St Paul University Dumaguete</div>
+          <div class="landing-sys">Guest Monitoring & Visitor Management System</div>
+        </div>
+      </div>
+
       <div class="landing-brand">
         <div class="landing-kicker">Visitor access portal</div>
         <h1>Choose how you want to continue.</h1>
