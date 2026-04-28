@@ -106,12 +106,3 @@ This codebase follows a pragmatic, feature-first PHP structure:
 - Many pages are controller + view in the same file.
 - `modules/` provides reusable query logic, but some pages still contain inline SQL for feature-specific workflows.
 
-This is normal for this project; keep consistency with surrounding files when making changes.
-
----
-
-If you want, I can also add:
-
-- a shorter one-page `CONTRIBUTING.md`,
-- setup scripts (`.env`-style configuration), or
-- a deployment checklist.
