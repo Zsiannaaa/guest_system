@@ -178,6 +178,16 @@ function navActive(string $path): string {
         <i data-lucide="chevron-down" class="user-chevron"></i>
       </div>
 
+      <a href="<?= isOfficeStaff() ? APP_URL . '/public/office/lookup.php' : APP_URL . '/public/visits/lookup.php' ?>" class="topbar-action-btn topbar-action-lookup">
+        <i data-lucide="<?= isOfficeStaff() ? 'scan-search' : 'search' ?>"></i>
+        <span><?= isOfficeStaff() ? 'Receive' : 'Lookup' ?></span>
+      </a>
+
+      <a href="<?= APP_URL ?>/public/auth/logout.php" class="topbar-action-btn topbar-action-logout">
+        <i data-lucide="log-out"></i>
+        <span>Logout</span>
+      </a>
+
       <!-- Dropdown (simple) -->
       <div id="userDropdown" style="display:none;position:absolute;top:60px;right:16px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);min-width:180px;z-index:200;padding:8px 0;">
         <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:.8rem;color:var(--text-m);">
