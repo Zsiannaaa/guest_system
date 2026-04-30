@@ -80,6 +80,7 @@ include __DIR__ . '/../../includes/header.php';
       <option value="admin">Administrator</option>
       <option value="guard">Guard / Reception</option>
       <option value="office_staff">Office Staff</option>
+      <option value="guest_house_staff">Guest House Staff</option>
     </select>
     <select class="table-filter" id="statusFilter">
       <option value="">All Status</option>

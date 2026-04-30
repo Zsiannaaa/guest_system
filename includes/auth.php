@@ -212,6 +212,14 @@ function isOfficeStaff(): bool {
     return isLoggedIn() && $_SESSION['user_role'] === ROLE_OFFICE_STAFF;
 }
 
+function isGuestHouseStaff(): bool {
+    return isLoggedIn() && $_SESSION['user_role'] === ROLE_GUEST_HOUSE_STAFF;
+}
+
+function isGuestHouseManager(): bool {
+    return isAdmin() || isGuestHouseStaff();
+}
+
 function isAdminOrGuard(): bool {
     return isAdmin() || isGuard();
 }
@@ -246,10 +254,11 @@ function currentOfficeId(): ?int {
  */
 function getDashboardUrl(): string {
     return match ($_SESSION['user_role'] ?? '') {
-        ROLE_ADMIN        => APP_URL . '/public/dashboard/admin.php',
-        ROLE_GUARD        => APP_URL . '/public/dashboard/guard.php',
-        ROLE_OFFICE_STAFF => APP_URL . '/public/dashboard/office.php',
-        default           => APP_URL . '/public/auth/login.php',
+        ROLE_ADMIN              => APP_URL . '/public/dashboard/admin.php',
+        ROLE_GUARD              => APP_URL . '/public/dashboard/guard.php',
+        ROLE_OFFICE_STAFF       => APP_URL . '/public/dashboard/office.php',
+        ROLE_GUEST_HOUSE_STAFF  => APP_URL . '/public/dashboard/guest_house.php',
+        default                 => APP_URL . '/public/auth/login.php',
     };
 }
 

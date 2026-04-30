@@ -99,6 +99,7 @@ include __DIR__ . '/../../includes/header.php';
             <option value="admin" <?= ($_POST['role']??'')==='admin'?'selected':'' ?>>Administrator</option>
             <option value="guard" <?= ($_POST['role']??'')==='guard'?'selected':'' ?>>Guard / Reception</option>
             <option value="office_staff" <?= ($_POST['role']??'')==='office_staff'?'selected':'' ?>>Office Staff</option>
+            <option value="guest_house_staff" <?= ($_POST['role']??'')==='guest_house_staff'?'selected':'' ?>>Guest House Staff</option>
           </select>
         </div>
         <div class="form-group" id="officeField">

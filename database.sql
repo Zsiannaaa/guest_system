@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email` VARCHAR(150) NOT NULL UNIQUE,
   `username` VARCHAR(80) NOT NULL UNIQUE,
   `password_hash` VARCHAR(255) NOT NULL,
-  `role` ENUM('admin','guard','office_staff') NOT NULL,
+  `role` ENUM('admin','guard','office_staff','guest_house_staff') NOT NULL,
   `office_id` INT(11) DEFAULT NULL,                    -- nullable for admin and guard
   `status` ENUM('active','inactive','suspended') NOT NULL DEFAULT 'active',
   `last_login` DATETIME DEFAULT NULL,
@@ -175,6 +175,14 @@ CREATE TABLE IF NOT EXISTS `activity_logs` (
     'user_updated',
     'office_created',
     'office_updated',
+    'gh_room_created',
+    'gh_room_updated',
+    'gh_booking_created',
+    'gh_booking_updated',
+    'gh_booking_cancelled',
+    'gh_checked_in',
+    'gh_checked_out',
+    'gh_visit_generated',
     'other'
   ) NOT NULL,
   `performed_by_user_id` INT(11) DEFAULT NULL,
@@ -369,5 +377,148 @@ INSERT INTO `activity_logs` (`visit_id`, `action_type`, `performed_by_user_id`, 
 (3, 'check_out',            2,    NULL, 'Guard checked out James Ong at exit gate',                          '127.0.0.1'),
 (5, 'walk_in_registration', 3,    NULL, 'Walk-in guest Felix Ramos registered',                              '127.0.0.1'),
 (5, 'unplanned_destination_added', 4, 7, 'Office staff added Library as unplanned destination for Felix Ramos', '127.0.0.1');
+
+
+-- ============================================================
+-- ============================================================
+-- PHASE 2: GUEST HOUSE ACCOMMODATION MODULE
+-- ============================================================
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- TABLE: gh_room_types
+-- Configurable lookup for room types (Single, Double, Suite...)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `gh_room_types` (
+  `type_id` INT(11) NOT NULL AUTO_INCREMENT,
+  `type_name` VARCHAR(80) NOT NULL UNIQUE,
+  `default_capacity` TINYINT(3) UNSIGNED NOT NULL DEFAULT 1,
+  `description` TEXT DEFAULT NULL,
+  `status` ENUM('active','inactive') NOT NULL DEFAULT 'active',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- TABLE: guest_house_rooms
+-- Physical rooms in the guest house
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `guest_house_rooms` (
+  `room_id` INT(11) NOT NULL AUTO_INCREMENT,
+  `room_number` VARCHAR(20) NOT NULL UNIQUE,
+  `type_id` INT(11) NOT NULL,
+  `capacity` TINYINT(3) UNSIGNED NOT NULL DEFAULT 1,
+  `floor` VARCHAR(20) DEFAULT NULL,
+  `location_note` VARCHAR(200) DEFAULT NULL,
+  `status` ENUM('available','occupied','maintenance','inactive') NOT NULL DEFAULT 'available',
+  `notes` TEXT DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`room_id`),
+  FOREIGN KEY (`type_id`) REFERENCES `gh_room_types`(`type_id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  INDEX `idx_gh_room_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- TABLE: guest_house_bookings
+-- One record per reservation/stay
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `guest_house_bookings` (
+  `booking_id` INT(11) NOT NULL AUTO_INCREMENT,
+  `booking_reference` VARCHAR(30) NOT NULL UNIQUE,
+  `guest_id` INT(11) NOT NULL,
+  `room_id` INT(11) DEFAULT NULL,
+  `check_in_date` DATE NOT NULL,
+  `check_out_date` DATE NOT NULL,
+  `actual_check_in` DATETIME DEFAULT NULL,
+  `actual_check_out` DATETIME DEFAULT NULL,
+  `purpose_of_stay` TEXT NOT NULL,
+  `sponsoring_office_id` INT(11) DEFAULT NULL,
+  `external_sponsor` VARCHAR(200) DEFAULT NULL,
+  `number_of_guests` TINYINT(3) UNSIGNED NOT NULL DEFAULT 1,
+  `status` ENUM('reserved','checked_in','occupied','checked_out','cancelled','no_show') NOT NULL DEFAULT 'reserved',
+  `linked_visit_id` INT(11) DEFAULT NULL,
+  `created_by_user_id` INT(11) DEFAULT NULL,
+  `notes` TEXT DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`booking_id`),
+  FOREIGN KEY (`guest_id`)             REFERENCES `guests`(`guest_id`)         ON DELETE RESTRICT ON UPDATE CASCADE,
+  FOREIGN KEY (`room_id`)              REFERENCES `guest_house_rooms`(`room_id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  FOREIGN KEY (`sponsoring_office_id`) REFERENCES `offices`(`office_id`)       ON DELETE SET NULL ON UPDATE CASCADE,
+  FOREIGN KEY (`linked_visit_id`)      REFERENCES `guest_visits`(`visit_id`)   ON DELETE SET NULL ON UPDATE CASCADE,
+  FOREIGN KEY (`created_by_user_id`)   REFERENCES `users`(`user_id`)           ON DELETE SET NULL ON UPDATE CASCADE,
+  INDEX `idx_gh_bk_room_dates` (`room_id`, `check_in_date`, `check_out_date`),
+  INDEX `idx_gh_bk_status`     (`status`),
+  INDEX `idx_gh_bk_guest`      (`guest_id`),
+  INDEX `idx_gh_bk_ref`        (`booking_reference`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- TABLE: gh_companions (scaffold; no UI in Phase 2a)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `gh_companions` (
+  `companion_id` INT(11) NOT NULL AUTO_INCREMENT,
+  `booking_id` INT(11) NOT NULL,
+  `full_name` VARCHAR(150) NOT NULL,
+  `relationship` VARCHAR(100) DEFAULT NULL,
+  `contact_number` VARCHAR(20) DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`companion_id`),
+  FOREIGN KEY (`booking_id`) REFERENCES `guest_house_bookings`(`booking_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  INDEX `idx_gh_comp_booking` (`booking_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
+-- SEED DATA: Guest House
+-- ============================================================
+
+INSERT INTO `gh_room_types` (`type_name`, `default_capacity`, `description`, `status`) VALUES
+('Single',    1, 'Single-occupant room with one bed.',                  'active'),
+('Double',    2, 'Two-person room with double or twin beds.',            'active'),
+('Suite',     2, 'Premium suite for VIP / visiting officials.',         'active'),
+('Dormitory', 6, 'Shared room for group accommodation.',                'active');
+
+INSERT INTO `guest_house_rooms` (`room_number`, `type_id`, `capacity`, `floor`, `location_note`, `status`) VALUES
+('GH-101', 1, 1, '1', 'Ground Floor, East Wing',  'available'),
+('GH-102', 2, 2, '1', 'Ground Floor, East Wing',  'available'),
+('GH-201', 3, 2, '2', '2nd Floor, VIP Suite',     'available'),
+('GH-202', 2, 2, '2', '2nd Floor',                'available'),
+('GH-301', 4, 6, '3', '3rd Floor, Group Dorm',    'available');
+
+-- Seed: Guest House staff user (password: Password@123)
+INSERT INTO `users` (`full_name`, `email`, `username`, `password_hash`, `role`, `office_id`, `status`) VALUES
+('Guest House Staff',     'gh_staff@university.edu', 'gh_staff',
+ '$2y$10$js.Wo3wgCRsF7osOsvcen.twq4P1knchqbFrXG9o/zy4xeyvQRyIu', 'guest_house_staff', NULL, 'active');
+
+-- Seed: Sample bookings
+INSERT INTO `guest_house_bookings`
+  (`booking_reference`, `guest_id`, `room_id`, `check_in_date`, `check_out_date`,
+   `actual_check_in`, `actual_check_out`,
+   `purpose_of_stay`, `sponsoring_office_id`, `external_sponsor`,
+   `number_of_guests`, `status`, `created_by_user_id`, `notes`)
+VALUES
+-- Reserved (future)
+('GH-20260430-0001', 3, 1, '2026-05-05', '2026-05-07',
+ NULL, NULL,
+ 'Guest speaker for IT seminar', 6, NULL,
+ 1, 'reserved', 1, NULL),
+
+-- Currently checked in
+('GH-20260430-0002', 1, 3, '2026-04-30', '2026-05-02',
+ '2026-04-30 14:00:00', NULL,
+ 'Board of Trustees meeting (VIP)', 5, NULL,
+ 1, 'checked_in', 1, 'VIP — provide airport transport'),
+
+-- Checked out (historical)
+('GH-20260430-0003', 5, 2, '2026-04-25', '2026-04-27',
+ '2026-04-25 13:30:00', '2026-04-27 10:00:00',
+ 'Partner university research visit', NULL, 'University of the Philippines',
+ 2, 'checked_out', 1, NULL);
+
+-- Reflect currently-occupied room status for the checked_in seed booking
+UPDATE `guest_house_rooms` SET `status` = 'occupied' WHERE `room_number` = 'GH-201';
 
 COMMIT;

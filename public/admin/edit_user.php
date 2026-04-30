@@ -29,7 +29,7 @@ if (isPost()) {
     if (empty($fullName)) $errors[] = 'Full name is required.';
     if (empty($email)) $errors[] = 'Email is required.';
     if (empty($username)) $errors[] = 'Username is required.';
-    if (!in_array($role,['admin','guard','office_staff'])) $errors[] = 'Invalid role.';
+    if (!in_array($role,['admin','guard','office_staff','guest_house_staff'])) $errors[] = 'Invalid role.';
     if ($role==='office_staff' && !$officeId) $errors[] = 'Office staff must have an assigned office.';
     if (!empty($newPwd)) { if (strlen($newPwd)<8) $errors[]='New password must be at least 8 characters.'; if ($newPwd!==$confirm) $errors[]='Passwords do not match.'; }
     if (empty($errors)) { $chk=$db->prepare("SELECT COUNT(*) FROM users WHERE (email=:e OR username=:u) AND user_id!=:id"); $chk->execute([':e'=>$email,':u'=>$username,':id'=>$userId]); if($chk->fetchColumn()>0) $errors[]='Email or username already used.'; }
@@ -81,7 +81,7 @@ include __DIR__ . '/../../includes/header.php';
       <div class="form-row">
         <div class="form-group"><label class="form-label">Role <span class="required-star">*</span></label>
           <select name="role" id="role" class="form-select" required onchange="handleRole(this.value)">
-            <?php foreach(['admin'=>'Administrator','guard'=>'Guard / Reception','office_staff'=>'Office Staff'] as $v=>$l): ?>
+            <?php foreach(['admin'=>'Administrator','guard'=>'Guard / Reception','office_staff'=>'Office Staff','guest_house_staff'=>'Guest House Staff'] as $v=>$l): ?>
             <option value="<?= $v ?>" <?= ($_POST['role']??$user['role'])===$v?'selected':'' ?>><?= $l ?></option>
             <?php endforeach; ?>
           </select></div>

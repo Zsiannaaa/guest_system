@@ -47,7 +47,7 @@ function createUser(PDO $pdo, string $fullName, string $email, string $username,
     if (strlen($password) < 8) {
         return 'Password must be at least 8 characters.';
     }
-    if (!in_array($role, ['admin', 'guard', 'office_staff'])) {
+    if (!in_array($role, ['admin', 'guard', 'office_staff', 'guest_house_staff'])) {
         return 'Invalid role selected.';
     }
     if ($role === 'office_staff' && !$officeId) {
@@ -77,7 +77,7 @@ function updateUser(PDO $pdo, int $id, string $fullName, string $email, string $
     if (!$fullName || !$email || !$username) {
         return 'Full name, email, and username are required.';
     }
-    if (!in_array($role, ['admin', 'guard', 'office_staff'])) {
+    if (!in_array($role, ['admin', 'guard', 'office_staff', 'guest_house_staff'])) {
         return 'Invalid role.';
     }
     if ($role === 'office_staff' && !$officeId) {

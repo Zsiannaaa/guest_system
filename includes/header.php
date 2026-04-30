@@ -11,6 +11,22 @@ function navActive(string $path): string {
     global $cur;
     return (strpos($cur, $path) !== false) ? ' active' : '';
 }
+
+$quickActionUrl = APP_URL . '/public/visits/lookup.php';
+$quickActionIcon = 'search';
+$quickActionLabel = 'Lookup';
+$quickDropdownLabel = 'Visit Lookup';
+if (isOfficeStaff()) {
+    $quickActionUrl = APP_URL . '/public/office/lookup.php';
+    $quickActionIcon = 'scan-search';
+    $quickActionLabel = 'Receive';
+    $quickDropdownLabel = 'Receive Visitor';
+} elseif (isGuestHouseStaff()) {
+    $quickActionUrl = APP_URL . '/public/guest_house/bookings.php';
+    $quickActionIcon = 'calendar-days';
+    $quickActionLabel = 'Bookings';
+    $quickDropdownLabel = 'Guest House Bookings';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -82,6 +98,62 @@ function navActive(string $path): string {
     </a>
     <a href="<?= APP_URL ?>/public/admin/users.php" class="nav-item<?= navActive('/admin/users') ?>">
       <i data-lucide="user-cog" class="nav-icon"></i><span class="nav-label">Users</span>
+    </a>
+
+    <div class="nav-section-label">Guest House</div>
+    <a href="<?= APP_URL ?>/public/guest_house/bookings.php" class="nav-item<?= navActive('/guest_house/bookings') ?>">
+      <i data-lucide="calendar-days" class="nav-icon"></i><span class="nav-label">Bookings</span>
+    </a>
+    <a href="<?= APP_URL ?>/public/guest_house/checkin.php" class="nav-item<?= navActive('/guest_house/checkin') ?>">
+      <i data-lucide="log-in" class="nav-icon"></i><span class="nav-label">GH Check-in</span>
+    </a>
+    <a href="<?= APP_URL ?>/public/guest_house/checkout.php" class="nav-item<?= navActive('/guest_house/checkout') ?>">
+      <i data-lucide="log-out" class="nav-icon"></i><span class="nav-label">GH Check-out</span>
+    </a>
+    <a href="<?= APP_URL ?>/public/guest_house/occupants.php" class="nav-item<?= navActive('/guest_house/occupants') ?>">
+      <i data-lucide="bed-double" class="nav-icon"></i><span class="nav-label">Current Occupants</span>
+    </a>
+    <a href="<?= APP_URL ?>/public/guest_house/rooms.php" class="nav-item<?= navActive('/guest_house/rooms') ?>">
+      <i data-lucide="door-open" class="nav-icon"></i><span class="nav-label">Rooms</span>
+    </a>
+    <a href="<?= APP_URL ?>/public/guest_house/room_types.php" class="nav-item<?= navActive('/guest_house/room_types') ?>">
+      <i data-lucide="layers" class="nav-icon"></i><span class="nav-label">Room Types</span>
+    </a>
+    <a href="<?= APP_URL ?>/public/guest_house/reports.php" class="nav-item<?= navActive('/guest_house/reports') ?>">
+      <i data-lucide="pie-chart" class="nav-icon"></i><span class="nav-label">GH Reports</span>
+    </a>
+
+  <?php elseif (isGuestHouseStaff()): ?>
+    <!-- GUEST HOUSE STAFF NAV -->
+    <a href="<?= APP_URL ?>/public/dashboard/guest_house.php" class="nav-item<?= navActive('/dashboard/guest_house') ?>">
+      <i data-lucide="layout-dashboard" class="nav-icon"></i><span class="nav-label">Dashboard</span>
+    </a>
+
+    <div class="nav-section-label">Guest House</div>
+    <a href="<?= APP_URL ?>/public/guest_house/bookings.php" class="nav-item<?= navActive('/guest_house/bookings') ?>">
+      <i data-lucide="calendar-days" class="nav-icon"></i><span class="nav-label">Bookings</span>
+    </a>
+    <a href="<?= APP_URL ?>/public/guest_house/booking_create.php" class="nav-item<?= navActive('/guest_house/booking_create') ?>">
+      <i data-lucide="calendar-plus" class="nav-icon"></i><span class="nav-label">New Booking</span>
+    </a>
+    <a href="<?= APP_URL ?>/public/guest_house/checkin.php" class="nav-item<?= navActive('/guest_house/checkin') ?>">
+      <i data-lucide="log-in" class="nav-icon"></i><span class="nav-label">Check-in</span>
+    </a>
+    <a href="<?= APP_URL ?>/public/guest_house/checkout.php" class="nav-item<?= navActive('/guest_house/checkout') ?>">
+      <i data-lucide="log-out" class="nav-icon"></i><span class="nav-label">Check-out</span>
+    </a>
+    <a href="<?= APP_URL ?>/public/guest_house/occupants.php" class="nav-item<?= navActive('/guest_house/occupants') ?>">
+      <i data-lucide="bed-double" class="nav-icon"></i><span class="nav-label">Current Occupants</span>
+    </a>
+
+    <div class="nav-section-label">Rooms</div>
+    <a href="<?= APP_URL ?>/public/guest_house/rooms.php" class="nav-item<?= navActive('/guest_house/rooms') ?>">
+      <i data-lucide="door-open" class="nav-icon"></i><span class="nav-label">Rooms</span>
+    </a>
+
+    <div class="nav-section-label">Reports</div>
+    <a href="<?= APP_URL ?>/public/guest_house/reports.php" class="nav-item<?= navActive('/guest_house/reports') ?>">
+      <i data-lucide="pie-chart" class="nav-icon"></i><span class="nav-label">GH Reports</span>
     </a>
 
   <?php elseif (isGuard()): ?>
@@ -178,9 +250,9 @@ function navActive(string $path): string {
         <i data-lucide="chevron-down" class="user-chevron"></i>
       </div>
 
-      <a href="<?= isOfficeStaff() ? APP_URL . '/public/office/lookup.php' : APP_URL . '/public/visits/lookup.php' ?>" class="topbar-action-btn topbar-action-lookup">
-        <i data-lucide="<?= isOfficeStaff() ? 'scan-search' : 'search' ?>"></i>
-        <span><?= isOfficeStaff() ? 'Receive' : 'Lookup' ?></span>
+      <a href="<?= $quickActionUrl ?>" class="topbar-action-btn topbar-action-lookup">
+        <i data-lucide="<?= $quickActionIcon ?>"></i>
+        <span><?= $quickActionLabel ?></span>
       </a>
 
       <a href="<?= APP_URL ?>/public/auth/logout.php" class="topbar-action-btn topbar-action-logout">
@@ -196,8 +268,8 @@ function navActive(string $path): string {
           <div><?= htmlspecialchars($_SESSION['office_name']) ?></div>
           <?php endif; ?>
         </div>
-        <a href="<?= isOfficeStaff() ? APP_URL . '/public/office/lookup.php' : APP_URL . '/public/visits/lookup.php' ?>" style="display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:.85rem;color:var(--text);transition:background .15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='none'">
-          <i data-lucide="<?= isOfficeStaff() ? 'scan-search' : 'search' ?>" style="width:14px;height:14px;"></i> <?= isOfficeStaff() ? 'Receive Visitor' : 'Visit Lookup' ?>
+        <a href="<?= $quickActionUrl ?>" style="display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:.85rem;color:var(--text);transition:background .15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='none'">
+          <i data-lucide="<?= $quickActionIcon ?>" style="width:14px;height:14px;"></i> <?= $quickDropdownLabel ?>
         </a>
         <hr style="margin:4px 0;border:none;border-top:1px solid var(--border);">
         <a href="<?= APP_URL ?>/public/auth/logout.php" style="display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:.85rem;color:var(--danger);transition:background .15s;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='none'">

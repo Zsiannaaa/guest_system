@@ -135,6 +135,13 @@ function statusLabel(string $status): string {
         'admin'          => 'Administrator',
         'guard'          => 'Guard / Reception',
         'office_staff'   => 'Office Staff',
+        'guest_house_staff' => 'Guest House Staff',
+        'reserved'       => 'Reserved',
+        'occupied'       => 'Occupied',
+        'no_show'        => 'No-show',
+        'available'      => 'Available',
+        'maintenance'    => 'Maintenance',
+        'inactive'       => 'Inactive',
         default          => ucfirst(str_replace('_', ' ', $status)),
     };
 }
@@ -166,10 +173,11 @@ function destStatusBadge(string $status): string {
 
 function roleBadge(string $role): string {
     return match ($role) {
-        'admin'        => 'bg-danger',
-        'guard'        => 'bg-primary',
-        'office_staff' => 'bg-info',
-        default        => 'bg-secondary',
+        'admin'             => 'bg-danger',
+        'guard'             => 'bg-primary',
+        'office_staff'      => 'bg-info',
+        'guest_house_staff' => 'bg-warning text-dark',
+        default             => 'bg-secondary',
     };
 }
 
