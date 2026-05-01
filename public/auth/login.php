@@ -38,6 +38,8 @@ if (isPost()) {
         }
     }
 }
+
+$loginHasNotice = $error || isset($_GET['timeout']) || isset($_GET['logout']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,7 +50,7 @@ if (isPost()) {
 <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/style.css">
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
-<body class="login-page">
+<body class="login-page<?= $loginHasNotice ? ' login-has-notice' : '' ?>">
 
 <!-- Top bar -->
 <div class="login-topbar">

@@ -1077,8 +1077,10 @@ textarea.form-control{resize:vertical;min-height:60px;}
 /* Login page redesign */
 .login-page{
   min-height:100vh;
+  height:100vh;
   display:flex;
   flex-direction:column;
+  overflow:hidden;
   background:#f4f4f1;
   --login-green:#2f8a49;
   --login-green-d:#166534;
@@ -1156,7 +1158,7 @@ textarea.form-control{resize:vertical;min-height:60px;}
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(360px,520px) minmax(24px,10vw);
   align-items:start;
-  min-height:560px;
+  min-height:0;
   padding:0;
   isolation:isolate;
   background:#f4f4f1;
@@ -1269,6 +1271,38 @@ textarea.form-control{resize:vertical;min-height:60px;}
   color:#475569;
   margin:6px 0 22px;
 }
+.login-page .login-card .flash-msg{
+  align-items:center;
+  padding:10px 14px;
+  font-size:.84rem;
+  margin:0 0 14px!important;
+}
+.login-page .login-card .flash-msg svg{
+  width:17px;
+  height:17px;
+  margin-top:0;
+}
+.login-page.login-has-notice .login-panel-right{
+  padding-bottom:24px;
+}
+.login-page.login-has-notice .login-card{
+  padding:24px 28px;
+}
+.login-page.login-has-notice .login-card-logo{
+  width:56px;
+  height:56px;
+  margin-bottom:14px;
+}
+.login-page.login-has-notice .login-card-logo img{
+  width:46px;
+  height:46px;
+}
+.login-page.login-has-notice .login-subtitle{
+  margin-bottom:16px;
+}
+.login-page.login-has-notice .form-group{
+  margin-bottom:14px;
+}
 .login-page .form-label{
   color:#111827;
   font-weight:800;
@@ -1328,6 +1362,11 @@ textarea.form-control{resize:vertical;min-height:60px;}
   display:none;
 }
 @media(max-width:980px){
+  .login-page{
+    height:auto;
+    min-height:100vh;
+    overflow:auto;
+  }
   .login-page .login-topbar{
     min-height:72px;
     padding:0 22px;
