@@ -96,6 +96,7 @@ include __DIR__ . '/../../includes/header.php';
       <dl style="margin:0;">
         <div class="detail-row" style="padding:10px 18px;"><dt>Plate Number</dt><dd style="font-weight:700;"><?= e($vehicle['plate_number']) ?></dd></div>
         <div class="detail-row" style="padding:10px 18px;"><dt>Type</dt><dd><?= e(statusLabel($vehicle['vehicle_type'])) ?></dd></div>
+        <div class="detail-row" style="padding:10px 18px;"><dt>Sticker / Pass</dt><dd><?= !empty($vehicle['has_university_sticker']) ? 'Yes' : 'No' ?><?= !empty($vehicle['sticker_number']) ? ' - ' . e($vehicle['sticker_number']) : '' ?></dd></div>
         <div class="detail-row" style="padding:10px 18px;"><dt>Color</dt><dd><?= e($vehicle['vehicle_color'] ?? 'â€”') ?></dd></div>
         <div class="detail-row" style="padding:10px 18px;"><dt>Model</dt><dd><?= e($vehicle['vehicle_model'] ?? 'â€”') ?></dd></div>
         <div class="detail-row" style="padding:10px 18px;"><dt>Driver</dt><dd><?= e($vehicle['driver_name'] ?: ($vehicle['is_driver_the_guest'] ? $guest['full_name'] : 'â€”')) ?></dd></div>

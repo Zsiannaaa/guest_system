@@ -25,6 +25,7 @@ if (isPost()) {
     $hasVehicle = isset($_POST['has_vehicle']) ? 1 : 0; $notes = trim($_POST['notes'] ?? '');
     $destOffices = $_POST['dest_offices'] ?? [];
     $plateNumber = trim($_POST['plate_number'] ?? ''); $vehicleType = trim($_POST['vehicle_type'] ?? 'car');
+    $hasSticker = isset($_POST['has_university_sticker']) ? 1 : 0; $stickerNumber = trim($_POST['sticker_number'] ?? '');
     $vehicleColor = trim($_POST['vehicle_color'] ?? ''); $vehicleModel = trim($_POST['vehicle_model'] ?? '');
     $driverName = trim($_POST['driver_name'] ?? ''); $driverIsGuest = isset($_POST['driver_is_guest']) ? 1 : 0;
 
@@ -50,8 +51,8 @@ if (isPost()) {
                    ->execute([':v'=>$visitId,':o'=>(int)$oid,':s'=>$seq+1,':p'=>$seq===0?1:0]);
             }
             if ($hasVehicle && $plateNumber) {
-                $db->prepare("INSERT INTO vehicle_entries (visit_id,vehicle_type,plate_number,vehicle_color,vehicle_model,driver_name,is_driver_the_guest) VALUES (:v,:t,:p,:c,:m,:d,:g)")
-                   ->execute([':v'=>$visitId,':t'=>$vehicleType,':p'=>$plateNumber,':c'=>$vehicleColor?:null,':m'=>$vehicleModel?:null,':d'=>$driverIsGuest?$fullName:($driverName?:null),':g'=>$driverIsGuest]);
+                $db->prepare("INSERT INTO vehicle_entries (visit_id,vehicle_type,plate_number,has_university_sticker,sticker_number,vehicle_color,vehicle_model,driver_name,is_driver_the_guest) VALUES (:v,:t,:p,:hs,:sn,:c,:m,:d,:g)")
+                   ->execute([':v'=>$visitId,':t'=>$vehicleType,':p'=>$plateNumber,':hs'=>$hasSticker,':sn'=>$stickerNumber?:null,':c'=>$vehicleColor?:null,':m'=>$vehicleModel?:null,':d'=>$driverIsGuest?$fullName:($driverName?:null),':g'=>$driverIsGuest]);
             }
             logActivity($visitId, 'pre_registration', currentUserId(), null, "Guest '{$fullName}' pre-registered: {$visitRef}");
             $db->commit();
@@ -135,6 +136,13 @@ include __DIR__ . '/../../includes/header.php';
         <div class="form-row">
           <div class="form-group"><label class="form-label">Type</label><select name="vehicle_type" class="form-select"><?php foreach(['car'=>'Car','motorcycle'=>'Motorcycle','van'=>'Van','truck'=>'Truck','other'=>'Other'] as $v=>$l): ?><option value="<?= $v ?>"><?= $l ?></option><?php endforeach; ?></select></div>
           <div class="form-group"><label class="form-label">Plate Number</label><input type="text" name="plate_number" class="form-control" value="<?= e($_POST['plate_number'] ?? '') ?>" style="text-transform:uppercase;"></div>
+        </div>
+        <div class="check-item">
+          <input type="checkbox" id="hasSticker" name="has_university_sticker" <?= isset($_POST['has_university_sticker'])?'checked':'' ?> onchange="document.getElementById('stickerField').style.display=this.checked?'block':'none'">
+          <label for="hasSticker">Vehicle has university sticker/pass</label>
+        </div>
+        <div id="stickerField" style="display:<?= isset($_POST['has_university_sticker'])?'block':'none' ?>;">
+          <div class="form-group"><label class="form-label">Sticker / Pass Number</label><input type="text" name="sticker_number" class="form-control" value="<?= e($_POST['sticker_number'] ?? '') ?>" placeholder="Optional"></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Color</label><input type="text" name="vehicle_color" class="form-control" value="<?= e($_POST['vehicle_color'] ?? '') ?>"></div>

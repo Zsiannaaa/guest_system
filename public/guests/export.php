@@ -56,6 +56,8 @@ if ($guestId > 0) {
             GROUP_CONCAT(o.office_name ORDER BY vd.sequence_no SEPARATOR '; ') AS offices,
             ve.vehicle_type,
             ve.plate_number,
+            ve.has_university_sticker,
+            ve.sticker_number,
             ve.vehicle_color,
             ve.vehicle_model,
             ve.driver_name
@@ -92,13 +94,15 @@ if ($guestId > 0) {
     if (empty($vehicles)) {
         fputcsv($out, ['No vehicle records']);
     } else {
-        fputcsv($out, ['Visit Reference', 'Visit Date', 'Type', 'Plate Number', 'Color', 'Model', 'Driver', 'Driver Is Guest']);
+        fputcsv($out, ['Visit Reference', 'Visit Date', 'Type', 'Plate Number', 'University Sticker / Pass', 'Sticker / Pass Number', 'Color', 'Model', 'Driver', 'Driver Is Guest']);
         foreach ($vehicles as $v) {
             fputcsv($out, [
                 $v['visit_reference'],
                 $v['visit_date'],
                 statusLabel($v['vehicle_type']),
                 $v['plate_number'],
+                $v['has_university_sticker'] ? 'Yes' : 'No',
+                $v['sticker_number'],
                 $v['vehicle_color'],
                 $v['vehicle_model'],
                 $v['driver_name'],
@@ -109,7 +113,7 @@ if ($guestId > 0) {
     fputcsv($out, []);
 
     fputcsv($out, ['Visit History']);
-    fputcsv($out, ['Reference', 'Date', 'Type', 'Status', 'Purpose', 'Offices', 'Check In', 'Check Out', 'Has Vehicle', 'Vehicle Type', 'Plate Number', 'Vehicle Color', 'Vehicle Model', 'Driver Name']);
+    fputcsv($out, ['Reference', 'Date', 'Type', 'Status', 'Purpose', 'Offices', 'Check In', 'Check Out', 'Has Vehicle', 'Vehicle Type', 'Plate Number', 'University Sticker / Pass', 'Sticker / Pass Number', 'Vehicle Color', 'Vehicle Model', 'Driver Name']);
     foreach ($visits as $v) {
         fputcsv($out, [
             $v['visit_reference'],
@@ -123,6 +127,8 @@ if ($guestId > 0) {
             $v['has_vehicle'] ? 'Yes' : 'No',
             $v['vehicle_type'],
             $v['plate_number'],
+            $v['has_university_sticker'] ? 'Yes' : 'No',
+            $v['sticker_number'],
             $v['vehicle_color'],
             $v['vehicle_model'],
             $v['driver_name'],
@@ -151,6 +157,8 @@ $stmt = $db->prepare("
         SUM(gv.has_vehicle=1) AS vehicle_visit_count,
         latest_vehicle.vehicle_type,
         latest_vehicle.plate_number,
+        latest_vehicle.has_university_sticker,
+        latest_vehicle.sticker_number,
         latest_vehicle.vehicle_color,
         latest_vehicle.vehicle_model,
         latest_vehicle.driver_name
@@ -191,6 +199,8 @@ fputcsv($out, [
     'Vehicle Visit Count',
     'Latest Vehicle Type',
     'Latest Plate Number',
+    'Latest University Sticker / Pass',
+    'Latest Sticker / Pass Number',
     'Latest Vehicle Color',
     'Latest Vehicle Model',
     'Latest Driver Name',
@@ -213,6 +223,8 @@ foreach ($rows as $r) {
         $r['vehicle_visit_count'] ?: 0,
         $r['vehicle_type'],
         $r['plate_number'],
+        $r['has_university_sticker'] ? 'Yes' : 'No',
+        $r['sticker_number'],
         $r['vehicle_color'],
         $r['vehicle_model'],
         $r['driver_name'],

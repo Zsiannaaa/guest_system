@@ -150,12 +150,17 @@ function createWalkinVisit(PDO $pdo, int $guestId, string $purpose, array $offic
     // Vehicle entry
     if ($hasVehicle && $vehicleData) {
         $pdo->prepare("
-            INSERT INTO vehicle_entries (visit_id, vehicle_type, plate_number, vehicle_color, vehicle_model, driver_name)
-            VALUES (:vid, :type, :plate, :color, :model, :driver)
+            INSERT INTO vehicle_entries
+                (visit_id, vehicle_type, plate_number, has_university_sticker, sticker_number,
+                 vehicle_color, vehicle_model, driver_name)
+            VALUES
+                (:vid, :type, :plate, :has_sticker, :sticker, :color, :model, :driver)
         ")->execute([
             ':vid' => $visitId, ':type' => $vehicleData['type'] ?? 'car',
             ':plate' => $vehicleData['plate'] ?? '', ':color' => $vehicleData['color'] ?? null,
             ':model' => $vehicleData['model'] ?? null, ':driver' => $vehicleData['driver'] ?? null,
+            ':has_sticker' => !empty($vehicleData['has_university_sticker']) ? 1 : 0,
+            ':sticker' => $vehicleData['sticker_number'] ?? null,
         ]);
     }
 
@@ -218,12 +223,15 @@ function createKnownGuestCheckinVisit(
         if ($hasVehicle && $vehicleData) {
             $pdo->prepare("
                 INSERT INTO vehicle_entries
-                    (visit_id, vehicle_type, plate_number, vehicle_color, vehicle_model, driver_name, is_driver_the_guest)
-                VALUES (:vid, :type, :plate, :color, :model, :driver, 1)
+                    (visit_id, vehicle_type, plate_number, has_university_sticker, sticker_number,
+                     vehicle_color, vehicle_model, driver_name, is_driver_the_guest)
+                VALUES (:vid, :type, :plate, :has_sticker, :sticker, :color, :model, :driver, 1)
             ")->execute([
                 ':vid' => $visitId,
                 ':type' => $vehicleData['vehicle_type'] ?? 'car',
                 ':plate' => $vehicleData['plate_number'] ?? '',
+                ':has_sticker' => !empty($vehicleData['has_university_sticker']) ? 1 : 0,
+                ':sticker' => $vehicleData['sticker_number'] ?? null,
                 ':color' => $vehicleData['vehicle_color'] ?? null,
                 ':model' => $vehicleData['vehicle_model'] ?? null,
                 ':driver' => $vehicleData['driver_name'] ?? null,
@@ -341,7 +349,8 @@ function getKnownGuestsForCheckin(PDO $pdo, int $limit = 500): array {
                g.is_restricted, g.restriction_reason,
                COUNT(gv.visit_id) AS visit_count,
                MAX(gv.visit_date) AS last_visit_date,
-               ve.vehicle_type, ve.plate_number, ve.vehicle_color, ve.vehicle_model
+               ve.vehicle_type, ve.plate_number, ve.has_university_sticker, ve.sticker_number,
+               ve.vehicle_color, ve.vehicle_model
         FROM guests g
         LEFT JOIN guest_visits gv ON g.guest_id = gv.guest_id
         LEFT JOIN (
@@ -364,7 +373,8 @@ function getKnownGuestsForCheckin(PDO $pdo, int $limit = 500): array {
  */
 function getGuestWithLatestVehicle(PDO $pdo, int $guestId): array|false {
     $stmt = $pdo->prepare("
-        SELECT g.*, ve.vehicle_type, ve.plate_number, ve.vehicle_color, ve.vehicle_model
+        SELECT g.*, ve.vehicle_type, ve.plate_number, ve.has_university_sticker, ve.sticker_number,
+               ve.vehicle_color, ve.vehicle_model
         FROM guests g
         LEFT JOIN (
             SELECT gv2.guest_id, MAX(ve2.vehicle_id) AS vehicle_id

@@ -67,6 +67,8 @@ if (isPost() && isset($_POST['create_known_checkin'])) {
     $reuseVehicle = isset($_POST['reuse_vehicle']) ? 1 : 0;
     $plateNumber = trim($_POST['plate_number'] ?? '');
     $vehicleType = trim($_POST['vehicle_type'] ?? 'car');
+    $hasSticker = isset($_POST['has_university_sticker']) ? 1 : 0;
+    $stickerNumber = trim($_POST['sticker_number'] ?? '');
     $vehicleColor = trim($_POST['vehicle_color'] ?? '');
     $vehicleModel = trim($_POST['vehicle_model'] ?? '');
 
@@ -93,6 +95,8 @@ if (isPost() && isset($_POST['create_known_checkin'])) {
                 $reuseVehicle ? [
                     'vehicle_type' => $vehicleType,
                     'plate_number' => $plateNumber,
+                    'has_university_sticker' => $hasSticker,
+                    'sticker_number' => $stickerNumber ?: null,
                     'vehicle_color' => $vehicleColor ?: null,
                     'vehicle_model' => $vehicleModel ?: null,
                     'driver_name' => $guestForCheckin['full_name'],
@@ -204,7 +208,7 @@ include __DIR__ . '/../../includes/header.php';
       <thead><tr><th>Guest</th><th>Contact</th><th>ID Type</th><th>Last Vehicle</th><th>Visits</th><th>Last Visit</th><th></th></tr></thead>
       <tbody>
       <?php foreach ($knownGuests as $g): ?>
-      <tr data-search="<?= e(strtolower(($g['full_name'] ?? '') . ' ' . ($g['contact_number'] ?? '') . ' ' . ($g['organization'] ?? '') . ' ' . ($g['id_type'] ?? '') . ' ' . ($g['plate_number'] ?? ''))) ?>">
+      <tr data-search="<?= e(strtolower(($g['full_name'] ?? '') . ' ' . ($g['contact_number'] ?? '') . ' ' . ($g['organization'] ?? '') . ' ' . ($g['id_type'] ?? '') . ' ' . ($g['plate_number'] ?? '') . ' ' . ($g['sticker_number'] ?? ''))) ?>">
         <td>
           <div class="guest-cell">
             <div class="guest-avatar" style="<?= $g['is_restricted'] ? 'background:var(--danger-l);color:var(--danger);' : '' ?>"><?= strtoupper(substr($g['full_name'],0,1)) ?></div>
@@ -216,7 +220,7 @@ include __DIR__ . '/../../includes/header.php';
         </td>
         <td style="font-size:.83rem;"><?= e($g['contact_number'] ?? '-') ?></td>
         <td style="font-size:.83rem;"><?= e($g['id_type'] ?? '-') ?></td>
-        <td style="font-size:.83rem;"><?= $g['plate_number'] ? e(trim(($g['plate_number'] ?? '') . ' ' . ($g['vehicle_model'] ?? ''))) : '-' ?></td>
+        <td style="font-size:.83rem;"><?= $g['plate_number'] ? e(trim(($g['plate_number'] ?? '') . ' ' . ($g['vehicle_model'] ?? ''))) . (!empty($g['has_university_sticker']) ? '<br><span class="badge badge-success" style="font-size:.62rem;">Sticker/Pass</span>' : '') : '-' ?></td>
         <td><span class="badge badge-secondary"><?= (int)$g['visit_count'] ?></span></td>
         <td style="font-size:.83rem;"><?= formatDate($g['last_visit_date']) ?></td>
         <td>
@@ -263,7 +267,7 @@ include __DIR__ . '/../../includes/header.php';
           <div class="detail-row"><dt>Contact</dt><dd><?= e($selectedGuest['contact_number'] ?? '-') ?></dd></div>
           <div class="detail-row"><dt>Organization</dt><dd><?= e($selectedGuest['organization'] ?? '-') ?></dd></div>
           <div class="detail-row"><dt>ID Type</dt><dd><?= e($selectedGuest['id_type'] ?? '-') ?></dd></div>
-          <div class="detail-row"><dt>Last Vehicle</dt><dd><?= !empty($selectedGuest['plate_number']) ? e(trim(($selectedGuest['plate_number'] ?? '') . ' ' . ($selectedGuest['vehicle_model'] ?? ''))) : '-' ?></dd></div>
+          <div class="detail-row"><dt>Last Vehicle</dt><dd><?= !empty($selectedGuest['plate_number']) ? e(trim(($selectedGuest['plate_number'] ?? '') . ' ' . ($selectedGuest['vehicle_model'] ?? ''))) . (!empty($selectedGuest['has_university_sticker']) ? '<br><span class="badge badge-success" style="font-size:.62rem;">Sticker/Pass' . (!empty($selectedGuest['sticker_number']) ? ': ' . e($selectedGuest['sticker_number']) : '') . '</span>' : '') : '-' ?></dd></div>
         </dl>
       </div>
     </div>
@@ -304,6 +308,16 @@ include __DIR__ . '/../../includes/header.php';
             <div class="form-group">
               <label class="form-label">Plate Number</label>
               <input type="text" name="plate_number" class="form-control" value="<?= e($selectedGuest['plate_number'] ?? '') ?>" style="text-transform:uppercase;">
+            </div>
+          </div>
+          <div class="check-item">
+            <input type="checkbox" id="hasSticker" name="has_university_sticker" <?= !empty($selectedGuest['has_university_sticker']) ? 'checked' : '' ?> onchange="document.getElementById('stickerField').style.display=this.checked?'block':'none'">
+            <label for="hasSticker">Vehicle has university sticker/pass</label>
+          </div>
+          <div id="stickerField" style="display:<?= !empty($selectedGuest['has_university_sticker']) ? 'block' : 'none' ?>;">
+            <div class="form-group">
+              <label class="form-label">Sticker / Pass Number</label>
+              <input type="text" name="sticker_number" class="form-control" value="<?= e($selectedGuest['sticker_number'] ?? '') ?>" placeholder="Optional">
             </div>
           </div>
           <div class="form-row">

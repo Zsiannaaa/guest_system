@@ -29,6 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $hasVehicle   = isset($_POST['has_vehicle']) ? 1 : 0;
     $vehicleType  = trim($_POST['vehicle_type'] ?? 'car');
     $plateNumber  = trim($_POST['plate_number'] ?? '');
+    $hasSticker   = isset($_POST['has_university_sticker']) ? 1 : 0;
+    $stickerNumber = trim($_POST['sticker_number'] ?? '');
     $vehicleColor = trim($_POST['vehicle_color'] ?? '');
     $vehicleModel = trim($_POST['vehicle_model'] ?? '');
     $driverName   = trim($_POST['driver_name'] ?? '');
@@ -94,12 +96,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($hasVehicle && $plateNumber) {
                 $db->prepare("
                     INSERT INTO vehicle_entries
-                        (visit_id, vehicle_type, plate_number, vehicle_color, vehicle_model, driver_name, is_driver_the_guest)
-                    VALUES (:v,:t,:p,:c,:m,:d,:g)
+                        (visit_id, vehicle_type, plate_number, has_university_sticker, sticker_number,
+                         vehicle_color, vehicle_model, driver_name, is_driver_the_guest)
+                    VALUES (:v,:t,:p,:hs,:sn,:c,:m,:d,:g)
                 ")->execute([
                     ':v'=>$visitId,
                     ':t'=>$vehicleType,
                     ':p'=>$plateNumber,
+                    ':hs'=>$hasSticker,
+                    ':sn'=>$stickerNumber?:null,
                     ':c'=>$vehicleColor?:null,
                     ':m'=>$vehicleModel?:null,
                     ':d'=>$driverIsGuest?$fullName:($driverName?:null),
@@ -311,6 +316,16 @@ include __DIR__ . '/../includes/public_header.php';
           <div class="form-group">
             <label class="form-label">Plate Number <span class="required-star">*</span></label>
             <input type="text" name="plate_number" class="form-control" value="<?= htmlspecialchars($_POST['plate_number'] ?? '') ?>" placeholder="ABC 1234" style="text-transform:uppercase;">
+          </div>
+        </div>
+        <div class="check-item">
+          <input type="checkbox" id="hasSticker" name="has_university_sticker" <?= isset($_POST['has_university_sticker']) ? 'checked' : '' ?> onchange="document.getElementById('stickerField').style.display=this.checked?'block':'none'">
+          <label for="hasSticker">Vehicle has university sticker/pass</label>
+        </div>
+        <div id="stickerField" style="display:<?= isset($_POST['has_university_sticker']) ? 'block' : 'none' ?>;">
+          <div class="form-group">
+            <label class="form-label">Sticker / Pass Number</label>
+            <input type="text" name="sticker_number" class="form-control" value="<?= htmlspecialchars($_POST['sticker_number'] ?? '') ?>" placeholder="Optional">
           </div>
         </div>
         <div class="form-row">

@@ -45,6 +45,11 @@ ALTER TABLE `activity_logs`
     'other'
   ) NOT NULL;
 
+-- 2b) Add vehicle sticker/pass flag used by normal guest vehicle entries.
+-- Existing schemas may already have sticker_number; this adds the quick yes/no flag.
+ALTER TABLE `vehicle_entries`
+  ADD COLUMN IF NOT EXISTS `has_university_sticker` TINYINT(1) NOT NULL DEFAULT 0 AFTER `plate_number`;
+
 -- 3) Create Guest House tables
 CREATE TABLE IF NOT EXISTS `gh_room_types` (
   `type_id` INT(11) NOT NULL AUTO_INCREMENT,

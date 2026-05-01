@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS `vehicle_entries` (
   `visit_id` INT(11) NOT NULL UNIQUE,                  -- one vehicle per visit record
   `vehicle_type` ENUM('car','motorcycle','van','truck','other') NOT NULL DEFAULT 'car',
   `plate_number` VARCHAR(20) NOT NULL,
+  `has_university_sticker` TINYINT(1) NOT NULL DEFAULT 0, -- 1 = university sticker/pass was seen
   `sticker_number` VARCHAR(50) DEFAULT NULL,           -- university-issued sticker if applicable
   `vehicle_color` VARCHAR(50) DEFAULT NULL,
   `vehicle_model` VARCHAR(100) DEFAULT NULL,
