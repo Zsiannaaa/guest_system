@@ -1,6 +1,6 @@
 <?php
 /**
- * modules/users_module.php — User Model
+ * modules/admin/users_module.php — User Model
  *
  * Contains ALL database logic for user management.
  * No HTML, no session checks — pure data functions.

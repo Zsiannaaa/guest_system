@@ -1,6 +1,6 @@
 <?php
 /**
- * modules/guests_module.php — Guest Model
+ * modules/guests/guests_module.php — Guest Model
  *
  * Contains ALL database logic for guest records.
  * No HTML, no session checks — pure data functions.

@@ -1,6 +1,6 @@
 <?php
 /**
- * modules/visits_module.php — Visit Model
+ * modules/visits/visits_module.php — Visit Model
  *
  * Contains ALL database logic for guest visits.
  * No HTML, no session checks — pure data functions.

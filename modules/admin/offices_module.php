@@ -1,6 +1,6 @@
 <?php
 /**
- * modules/offices_module.php — Office Model
+ * modules/admin/offices_module.php — Office Model
  *
  * Contains ALL database logic for office management.
  * No HTML, no session checks — pure data functions.

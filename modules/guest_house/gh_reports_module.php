@@ -1,6 +1,6 @@
 <?php
 /**
- * modules/gh_reports_module.php — Guest House Reports Model
+ * modules/guest_house/gh_reports_module.php — Guest House Reports Model
  * Pure DB logic.
  */
 

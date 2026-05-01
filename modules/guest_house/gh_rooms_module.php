@@ -1,6 +1,6 @@
 <?php
 /**
- * modules/gh_rooms_module.php — Guest House Rooms + Room Types Model
+ * modules/guest_house/gh_rooms_module.php — Guest House Rooms + Room Types Model
  *
  * Pure DB logic. No HTML, no session checks.
  * Called by: public/guest_house/rooms.php, room_types.php,

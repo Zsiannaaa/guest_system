@@ -1,6 +1,6 @@
 <?php
 /**
- * modules/reports_module.php — Report Model
+ * modules/reports/reports_module.php — Report Model
  *
  * Contains ALL database logic for reports.
  * No HTML, no session checks — pure data functions.

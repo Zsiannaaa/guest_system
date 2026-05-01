@@ -1,6 +1,6 @@
 <?php
 /**
- * modules/gh_bookings_module.php — Guest House Bookings Model
+ * modules/guest_house/gh_bookings_module.php — Guest House Bookings Model
  *
  * Pure DB logic. No HTML, no session checks.
  * Called by: public/guest_house/bookings.php and related pages.

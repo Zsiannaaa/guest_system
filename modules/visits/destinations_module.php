@@ -1,6 +1,6 @@
 <?php
 /**
- * modules/destinations_module.php — Office Destination Model
+ * modules/visits/destinations_module.php — Office Destination Model
  *
  * Contains ALL database logic for visit destinations (office routing).
  * No HTML, no session checks — pure data functions.

@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
-require_once __DIR__ . '/../../modules/destinations_module.php';
+require_once __DIR__ . '/../../modules/visits/destinations_module.php';
 requireRole([ROLE_OFFICE_STAFF, ROLE_ADMIN]);
 $pageTitle = 'Visit History'; $db = getDB();
 $officeId = isAdmin() ? (int)($_GET['office'] ?? 0) : currentOfficeId();

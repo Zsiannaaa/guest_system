@@ -3,7 +3,7 @@
 // public/admin/add_user.php — Add New User (Controller + View)
 //
 // MVC Role:
-//   Model      → modules/users_module.php
+//   Model      → modules/admin/users_module.php
 //   Controller → POST handling at the top
 //   View       → HTML below
 //
@@ -13,7 +13,7 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
-require_once __DIR__ . '/../../modules/users_module.php';
+require_once __DIR__ . '/../../modules/admin/users_module.php';
 
 requireRole(ROLE_ADMIN);
 $pageTitle = 'Add New User';

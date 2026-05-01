@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
-require_once __DIR__ . '/../../modules/guests_module.php';
+require_once __DIR__ . '/../../modules/guests/guests_module.php';
 requireRole(ROLE_ADMIN);
 $pageTitle = 'Restricted Guests'; $db = getDB();
 $stmt = $db->prepare("SELECT g.*, r.reason, r.restricted_at, r.restriction_id, u.full_name AS restricted_by_name FROM guests g JOIN restricted_guests r ON g.guest_id=r.guest_id LEFT JOIN users u ON r.restricted_by_user_id=u.user_id WHERE r.is_active=1 ORDER BY r.restricted_at DESC");

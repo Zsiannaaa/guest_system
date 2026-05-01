@@ -1,6 +1,6 @@
 <?php
 /**
- * modules/dashboard_module.php — Dashboard Model
+ * modules/dashboard/dashboard_module.php — Dashboard Model
  *
  * Contains ALL database logic for dashboard stats and widgets.
  * No HTML, no session checks — pure data functions.
