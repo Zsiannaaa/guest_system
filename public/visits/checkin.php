@@ -16,107 +16,42 @@ $selectedGuestId = isset($_GET['guest_id']) ? (int)$_GET['guest_id'] : null;
 $selectedGuest = null;
 $knownCheckinErrors = [];
 $query = trim($_GET['q'] ?? '');
-$offices = $db->query("SELECT office_id, office_name FROM offices WHERE status='active' ORDER BY office_name")->fetchAll();
-
-$pendingStmt = $db->query("
-    SELECT gv.visit_id, gv.visit_reference, gv.visit_date, gv.expected_time_in,
-           gv.registration_type, gv.overall_status,
-           g.full_name AS guest_name, g.contact_number, g.organization, g.is_restricted,
-           GROUP_CONCAT(o.office_name ORDER BY vd.sequence_no SEPARATOR ', ') AS destinations
-    FROM guest_visits gv
-    JOIN guests g ON gv.guest_id = g.guest_id
-    LEFT JOIN visit_destinations vd ON gv.visit_id = vd.visit_id
-    LEFT JOIN offices o ON vd.office_id = o.office_id
-    WHERE gv.overall_status = 'pending'
-      AND g.is_restricted = 0
-    GROUP BY gv.visit_id
-    ORDER BY gv.visit_date ASC, gv.created_at ASC
-    LIMIT 300
-");
-$pendingVisits = $pendingStmt->fetchAll();
-
-$restrictedPendingStmt = $db->query("
-    SELECT gv.visit_id, gv.visit_reference, gv.visit_date,
-           g.full_name AS guest_name, g.restriction_reason
-    FROM guest_visits gv
-    JOIN guests g ON gv.guest_id = g.guest_id
-    WHERE gv.overall_status = 'pending'
-      AND g.is_restricted = 1
-    ORDER BY gv.visit_date ASC, gv.created_at ASC
-    LIMIT 20
-");
-$restrictedPendingVisits = $restrictedPendingStmt->fetchAll();
-
-$knownGuestsStmt = $db->query("
-    SELECT g.guest_id, g.full_name, g.contact_number, g.organization, g.id_type,
-           g.is_restricted, g.restriction_reason,
-           COUNT(gv.visit_id) AS visit_count,
-           MAX(gv.visit_date) AS last_visit_date,
-           ve.vehicle_type, ve.plate_number, ve.vehicle_color, ve.vehicle_model
-    FROM guests g
-    LEFT JOIN guest_visits gv ON g.guest_id = gv.guest_id
-    LEFT JOIN (
-        SELECT gv2.guest_id, MAX(ve2.vehicle_id) AS vehicle_id
-        FROM vehicle_entries ve2
-        JOIN guest_visits gv2 ON ve2.visit_id = gv2.visit_id
-        GROUP BY gv2.guest_id
-    ) latest_vehicle ON latest_vehicle.guest_id = g.guest_id
-    LEFT JOIN vehicle_entries ve ON ve.vehicle_id = latest_vehicle.vehicle_id
-    GROUP BY g.guest_id
-    ORDER BY g.full_name ASC
-    LIMIT 500
-");
-$knownGuests = $knownGuestsStmt->fetchAll();
+$offices = getActiveOfficesForVisitForms($db);
+$pendingVisits = getPendingCheckinVisits($db);
+$restrictedPendingVisits = getRestrictedPendingCheckinVisits($db);
+$knownGuests = getKnownGuestsForCheckin($db);
 
 if ($selectedGuestId) {
-    $selectedGuestStmt = $db->prepare("
-        SELECT g.*, ve.vehicle_type, ve.plate_number, ve.vehicle_color, ve.vehicle_model
-        FROM guests g
-        LEFT JOIN (
-            SELECT gv2.guest_id, MAX(ve2.vehicle_id) AS vehicle_id
-            FROM vehicle_entries ve2
-            JOIN guest_visits gv2 ON ve2.visit_id = gv2.visit_id
-            GROUP BY gv2.guest_id
-        ) latest_vehicle ON latest_vehicle.guest_id = g.guest_id
-        LEFT JOIN vehicle_entries ve ON ve.vehicle_id = latest_vehicle.vehicle_id
-        WHERE g.guest_id = :gid
-        LIMIT 1
-    ");
-    $selectedGuestStmt->execute([':gid' => $selectedGuestId]);
-    $selectedGuest = $selectedGuestStmt->fetch();
+    $selectedGuest = getGuestWithLatestVehicle($db, $selectedGuestId);
 }
 
 if (isset($_GET['search']) || $directId) {
     if ($directId) {
-        $stmt = $db->prepare("SELECT gv.*, g.full_name AS guest_name, g.contact_number, g.organization, g.id_type, g.is_restricted FROM guest_visits gv JOIN guests g ON gv.guest_id=g.guest_id WHERE gv.visit_id=:id LIMIT 1");
-        $stmt->execute([':id'=>$directId]);
+        $results = [];
+        $directVisit = getCheckinVisitById($db, $directId);
+        if ($directVisit) {
+            $results[] = $directVisit;
+        }
     } elseif (!empty($query)) {
-        $stmt = $db->prepare("SELECT gv.*, g.full_name AS guest_name, g.contact_number, g.organization, g.id_type, g.is_restricted FROM guest_visits gv JOIN guests g ON gv.guest_id=g.guest_id WHERE gv.overall_status='pending' AND g.is_restricted=0 AND (gv.visit_reference=:q1 OR gv.qr_token=:q2 OR g.full_name LIKE :q3) ORDER BY gv.visit_date DESC LIMIT 5");
-        $stmt->execute([':q1'=>$query, ':q2'=>$query, ':q3'=>"%{$query}%"]);
+        $results = searchPendingCheckinVisits($db, $query);
     }
-    if (isset($stmt)) {
-        $results = $stmt->fetchAll();
+    if (isset($results)) {
         if (count($results) === 1) { $visit = $results[0]; }
         elseif (count($results) > 1) { $searchResult = $results; }
         else { $searchError = 'No pending visit found. Use a saved guest record below to create a new check-in.'; }
     }
     if ($visit) {
-        $destStmt = $db->prepare("SELECT vd.*, o.office_name FROM visit_destinations vd JOIN offices o ON vd.office_id=o.office_id WHERE vd.visit_id=:vid ORDER BY vd.sequence_no");
-        $destStmt->execute([':vid'=>$visit['visit_id']]);
-        $destinations = $destStmt->fetchAll();
+        $destinations = getVisitDestinationsWithOffice($db, (int)$visit['visit_id']);
     }
 }
 
 if (isPost() && isset($_POST['confirm_checkin'])) {
     verifyCsrf(APP_URL . '/public/visits/checkin.php');
     $visitId = (int)($_POST['visit_id'] ?? 0);
-    $checkStmt = $db->prepare("SELECT gv.*, g.full_name AS guest_name, g.is_restricted FROM guest_visits gv JOIN guests g ON gv.guest_id=g.guest_id WHERE gv.visit_id=:vid AND gv.overall_status='pending'");
-    $checkStmt->execute([':vid'=>$visitId]);
-    $toCheckIn = $checkStmt->fetch();
+    $toCheckIn = getPendingVisitForCheckin($db, $visitId);
     if (!$toCheckIn) { setFlash('error', 'This visit is no longer pending.'); redirect(APP_URL.'/public/visits/checkin.php'); }
     if ($toCheckIn['is_restricted']) { setFlash('error', 'This guest is restricted and cannot be checked in. Contact an administrator.'); redirect(APP_URL.'/public/visits/checkin.php'); }
-    $db->prepare("UPDATE guest_visits SET overall_status='checked_in', actual_check_in=NOW(), processed_by_guard_id=:guard WHERE visit_id=:vid")
-       ->execute([':guard'=>currentUserId(),':vid'=>$visitId]);
+    checkInVisit($db, $visitId, currentUserId());
     logActivity($visitId, 'check_in', currentUserId(), null, "Checked in '{$toCheckIn['guest_name']}'");
     setFlash('success', "Guest <strong>{$toCheckIn['guest_name']}</strong> checked in successfully!");
     redirect(APP_URL.'/public/visits/view.php?id='.$visitId);
@@ -135,9 +70,7 @@ if (isPost() && isset($_POST['create_known_checkin'])) {
     $vehicleColor = trim($_POST['vehicle_color'] ?? '');
     $vehicleModel = trim($_POST['vehicle_model'] ?? '');
 
-    $guestStmt = $db->prepare("SELECT * FROM guests WHERE guest_id=:gid LIMIT 1");
-    $guestStmt->execute([':gid' => $guestId]);
-    $guestForCheckin = $guestStmt->fetch();
+    $guestForCheckin = getGuestForKnownCheckin($db, $guestId);
 
     if (!$guestForCheckin) $knownCheckinErrors[] = 'Please select a saved guest record.';
     elseif ($guestForCheckin['is_restricted']) $knownCheckinErrors[] = 'This guest is restricted and cannot be checked in. Contact an administrator.';
@@ -149,62 +82,31 @@ if (isPost() && isset($_POST['create_known_checkin'])) {
 
     if (empty($knownCheckinErrors)) {
         try {
-            $db->beginTransaction();
-            $visitRef = generateVisitReference();
-            $qrToken = generateQrToken();
-
-            $db->prepare("
-                INSERT INTO guest_visits
-                    (guest_id, visit_reference, qr_token, registration_type, purpose_of_visit,
-                     visit_date, actual_check_in, overall_status, has_vehicle, processed_by_guard_id, notes)
-                VALUES
-                    (:gid, :ref, :qr, 'walk_in', :purpose, :vdate, NOW(), 'checked_in', :vehicle, :guard, :notes)
-            ")->execute([
-                ':gid' => $guestId,
-                ':ref' => $visitRef,
-                ':qr' => $qrToken,
-                ':purpose' => $purpose,
-                ':vdate' => $visitDate,
-                ':vehicle' => $reuseVehicle,
-                ':guard' => currentUserId(),
-                ':notes' => $notes ?: null,
-            ]);
-            $newVisitId = (int)$db->lastInsertId();
-
-            foreach ($destOffices as $seq => $oid) {
-                $db->prepare("
-                    INSERT INTO visit_destinations (visit_id, office_id, sequence_no, destination_status, is_primary)
-                    VALUES (:v, :o, :s, 'pending', :p)
-                ")->execute([
-                    ':v' => $newVisitId,
-                    ':o' => (int)$oid,
-                    ':s' => $seq + 1,
-                    ':p' => $seq === 0 ? 1 : 0,
-                ]);
-            }
-
-            if ($reuseVehicle) {
-                $db->prepare("
-                    INSERT INTO vehicle_entries
-                        (visit_id, vehicle_type, plate_number, vehicle_color, vehicle_model, driver_name, is_driver_the_guest)
-                    VALUES (:v, :t, :p, :c, :m, :d, 1)
-                ")->execute([
-                    ':v' => $newVisitId,
-                    ':t' => $vehicleType,
-                    ':p' => $plateNumber,
-                    ':c' => $vehicleColor ?: null,
-                    ':m' => $vehicleModel ?: null,
-                    ':d' => $guestForCheckin['full_name'],
-                ]);
-            }
+            $createdVisit = createKnownGuestCheckinVisit(
+                $db,
+                $guestId,
+                $purpose,
+                $visitDate,
+                $destOffices,
+                currentUserId(),
+                (bool) $reuseVehicle,
+                $reuseVehicle ? [
+                    'vehicle_type' => $vehicleType,
+                    'plate_number' => $plateNumber,
+                    'vehicle_color' => $vehicleColor ?: null,
+                    'vehicle_model' => $vehicleModel ?: null,
+                    'driver_name' => $guestForCheckin['full_name'],
+                ] : null,
+                $notes ?: null
+            );
+            $newVisitId = (int) $createdVisit['visit_id'];
+            $visitRef = $createdVisit['visit_reference'];
 
             logActivity($newVisitId, 'walk_in_registration', currentUserId(), null, "Known guest '{$guestForCheckin['full_name']}' checked in from saved record: {$visitRef}");
             logActivity($newVisitId, 'check_in', currentUserId(), null, "Guard checked in known guest '{$guestForCheckin['full_name']}'");
-            $db->commit();
             setFlash('success', "Guest <strong>{$guestForCheckin['full_name']}</strong> checked in successfully! Reference: <strong>{$visitRef}</strong>");
             redirect(APP_URL . '/public/visits/view.php?id=' . $newVisitId);
         } catch (PDOException $e) {
-            $db->rollBack();
             error_log('Known guest check-in error: ' . $e->getMessage());
             $knownCheckinErrors[] = 'A database error occurred. Please try again.';
         }
@@ -213,21 +115,7 @@ if (isPost() && isset($_POST['create_known_checkin'])) {
     if (!empty($knownCheckinErrors)) {
         $selectedGuestId = $guestId;
         if ($guestId) {
-            $selectedGuestStmt = $db->prepare("
-                SELECT g.*, ve.vehicle_type, ve.plate_number, ve.vehicle_color, ve.vehicle_model
-                FROM guests g
-                LEFT JOIN (
-                    SELECT gv2.guest_id, MAX(ve2.vehicle_id) AS vehicle_id
-                    FROM vehicle_entries ve2
-                    JOIN guest_visits gv2 ON ve2.visit_id = gv2.visit_id
-                    GROUP BY gv2.guest_id
-                ) latest_vehicle ON latest_vehicle.guest_id = g.guest_id
-                LEFT JOIN vehicle_entries ve ON ve.vehicle_id = latest_vehicle.vehicle_id
-                WHERE g.guest_id = :gid
-                LIMIT 1
-            ");
-            $selectedGuestStmt->execute([':gid' => $guestId]);
-            $selectedGuest = $selectedGuestStmt->fetch();
+            $selectedGuest = getGuestWithLatestVehicle($db, $guestId);
         }
     }
 }

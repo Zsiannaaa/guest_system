@@ -8,36 +8,12 @@ requireRole(ROLE_OFFICE_STAFF);
 $pageTitle = 'Office Dashboard';
 $db = getDB();
 $oid = currentOfficeId();
-$today = date('Y-m-d');
-
-$incoming  = getCountQuery("SELECT COUNT(*) FROM visit_destinations vd JOIN guest_visits gv ON vd.visit_id=gv.visit_id WHERE vd.office_id=:o AND vd.destination_status='pending' AND gv.overall_status='checked_in'",[':o'=>$oid]);
-$serving   = getCountQuery("SELECT COUNT(*) FROM visit_destinations WHERE office_id=:o AND destination_status IN('arrived','in_service')",[':o'=>$oid]);
-$doneToday = getCountQuery("SELECT COUNT(*) FROM visit_destinations vd JOIN guest_visits gv ON vd.visit_id=gv.visit_id WHERE vd.office_id=:o AND vd.destination_status='completed' AND gv.visit_date=:d",[':o'=>$oid,':d'=>$today]);
-
-$incomingStmt = $db->prepare("
-    SELECT vd.destination_id,vd.is_unplanned,gv.visit_id,gv.visit_reference,
-           gv.purpose_of_visit,gv.actual_check_in,gv.registration_type,
-           g.full_name AS guest_name,g.organization
-    FROM visit_destinations vd
-    JOIN guest_visits gv ON vd.visit_id=gv.visit_id
-    JOIN guests g ON gv.guest_id=g.guest_id
-    WHERE vd.office_id=:o AND vd.destination_status='pending' AND gv.overall_status='checked_in'
-    ORDER BY gv.actual_check_in ASC LIMIT 8
-");
-$incomingStmt->execute([':o'=>$oid]);
-$incomingList = $incomingStmt->fetchAll();
-
-$servingStmt = $db->prepare("
-    SELECT vd.destination_id,vd.destination_status,gv.visit_id,gv.visit_reference,
-           vd.arrival_time,g.full_name AS guest_name,g.organization
-    FROM visit_destinations vd
-    JOIN guest_visits gv ON vd.visit_id=gv.visit_id
-    JOIN guests g ON gv.guest_id=g.guest_id
-    WHERE vd.office_id=:o AND vd.destination_status IN('arrived','in_service')
-    ORDER BY vd.arrival_time ASC LIMIT 5
-");
-$servingStmt->execute([':o'=>$oid]);
-$servingList = $servingStmt->fetchAll();
+$stats = getOfficeDashboardStats($db, $oid);
+$incoming = $stats['incoming'];
+$serving = $stats['serving'];
+$doneToday = $stats['completed'];
+$incomingList = getOfficeIncomingList($db, $oid);
+$servingList = getOfficeServingList($db, $oid);
 
 include __DIR__ . '/../../includes/header.php';
 ?>

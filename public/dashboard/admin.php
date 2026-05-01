@@ -9,64 +9,18 @@ $pageTitle = 'Dashboard';
 $db = getDB();
 $today = date('Y-m-d');
 
-// Stats
-$totalToday    = getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE visit_date=:d", [':d'=>$today]);
-$insideNow     = getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE overall_status='checked_in'");
-$checkedOutToday = getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE visit_date=:d AND overall_status='checked_out'", [':d'=>$today]);
-$withVehicle   = getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE visit_date=:d AND has_vehicle=1", [':d'=>$today]);
-$overstayed    = getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE overall_status='overstayed'");
-$yesterday     = getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE visit_date=:d", [':d'=>date('Y-m-d', strtotime('-1 day'))]);
-$pctChange     = $yesterday > 0 ? round((($totalToday - $yesterday) / $yesterday) * 100) : 0;
-
-// Active visitors
-$activeStmt = $db->prepare("
-    SELECT gv.visit_id, gv.visit_reference, gv.actual_check_in, gv.registration_type,
-           g.full_name AS guest_name,
-           GROUP_CONCAT(o.office_name ORDER BY vd.sequence_no SEPARATOR ', ') AS destinations,
-           MAX(CASE WHEN vd.is_unplanned=1 THEN 'Unplanned' ELSE 'Primary' END) AS dest_type
-    FROM guest_visits gv
-    JOIN guests g ON gv.guest_id=g.guest_id
-    LEFT JOIN visit_destinations vd ON gv.visit_id=vd.visit_id
-    LEFT JOIN offices o ON vd.office_id=o.office_id
-    WHERE gv.overall_status='checked_in'
-    GROUP BY gv.visit_id
-    ORDER BY gv.actual_check_in DESC
-    LIMIT 5
-");
-$activeStmt->execute();
-$activeVisitors = $activeStmt->fetchAll();
-
-// Recent registrations
-$recentStmt = $db->prepare("
-    SELECT gv.visit_id, gv.visit_reference, gv.registration_type, gv.overall_status,
-           gv.actual_check_in, gv.purpose_of_visit,
-           g.full_name AS guest_name
-    FROM guest_visits gv
-    JOIN guests g ON gv.guest_id=g.guest_id
-    ORDER BY gv.created_at DESC LIMIT 5
-");
-$recentStmt->execute();
-$recentVisits = $recentStmt->fetchAll();
-
-// Visitors by office
-$officeStmt = $db->prepare("
-    SELECT o.office_name, COUNT(vd.destination_id) AS total
-    FROM visit_destinations vd
-    JOIN offices o ON vd.office_id=o.office_id
-    JOIN guest_visits gv ON vd.visit_id=gv.visit_id
-    WHERE gv.visit_date=:d
-    GROUP BY o.office_id ORDER BY total DESC
-");
-$officeStmt->execute([':d'=>$today]);
-$byOffice = $officeStmt->fetchAll();
+$stats = getAdminDashboardStats($db);
+extract($stats);
+$activeVisitors = getActiveVisitorsForDashboard($db);
+$recentVisits = getRecentVisitsForDashboard($db);
+$byOffice = getVisitorsByOfficeForDate($db, $today);
 $officeChartDate = $today;
 $officeChartTitle = 'Visitors by Office (Today)';
 
 if (empty($byOffice)) {
-    $latestVisitDate = $db->query("SELECT MAX(visit_date) FROM guest_visits")->fetchColumn();
+    $latestVisitDate = getLatestVisitDate($db);
     if ($latestVisitDate) {
-        $officeStmt->execute([':d' => $latestVisitDate]);
-        $byOffice = $officeStmt->fetchAll();
+        $byOffice = getVisitorsByOfficeForDate($db, $latestVisitDate);
         $officeChartDate = $latestVisitDate;
         $officeChartTitle = 'Visitors by Office (Latest Records)';
     }

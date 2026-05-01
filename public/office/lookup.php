@@ -108,30 +108,26 @@ if (isPost() && isset($_POST['receive_unexpected'])) {
 }
 
 if ($q !== '') {
-    $officeSelect = $officeId
-        ? ", vd_self.destination_id AS office_destination_id, vd_self.destination_status AS office_destination_status"
-        : ", NULL AS office_destination_id, NULL AS office_destination_status";
-    $officeJoin = $officeId
-        ? "LEFT JOIN visit_destinations vd_self ON vd_self.visit_id = gv.visit_id AND vd_self.office_id = {$officeId}"
-        : "";
-
     $stmt = $db->prepare("
         SELECT gv.visit_id, gv.visit_reference, gv.purpose_of_visit, gv.actual_check_in,
                g.full_name AS guest_name, g.organization,
-               GROUP_CONCAT(o.office_name ORDER BY vd.sequence_no SEPARATOR ', ') AS routed_offices
-               {$officeSelect}
+               GROUP_CONCAT(o.office_name ORDER BY vd.sequence_no SEPARATOR ', ') AS routed_offices,
+               vd_self.destination_id AS office_destination_id,
+               vd_self.destination_status AS office_destination_status
         FROM guest_visits gv
         JOIN guests g ON gv.guest_id = g.guest_id
         LEFT JOIN visit_destinations vd ON vd.visit_id = gv.visit_id
         LEFT JOIN offices o ON o.office_id = vd.office_id
-        {$officeJoin}
+        LEFT JOIN visit_destinations vd_self
+               ON vd_self.visit_id = gv.visit_id
+              AND vd_self.office_id = :office_id
         WHERE gv.overall_status = 'checked_in'
           AND (gv.visit_reference = :q1 OR gv.qr_token = :q2 OR g.full_name LIKE :q3)
         GROUP BY gv.visit_id
         ORDER BY gv.actual_check_in DESC
         LIMIT 20
     ");
-    $stmt->execute([':q1' => $q, ':q2' => $q, ':q3' => "%{$q}%"]);
+    $stmt->execute([':office_id' => $officeId, ':q1' => $q, ':q2' => $q, ':q3' => "%{$q}%"]);
     $results = $stmt->fetchAll();
 }
 

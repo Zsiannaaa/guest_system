@@ -18,6 +18,34 @@ function ghOccupancyToday(PDO $pdo): array {
     ];
 }
 
+function ghExpectedToday(PDO $pdo): array {
+    return $pdo->query("
+        SELECT b.*, g.full_name AS guest_name, g.organization, r.room_number
+        FROM guest_house_bookings b
+        JOIN guests g ON b.guest_id = g.guest_id
+        LEFT JOIN guest_house_rooms r ON b.room_id = r.room_id
+        WHERE b.check_in_date <= CURDATE()
+          AND b.status = 'reserved'
+        ORDER BY b.check_in_date, b.booking_id
+    ")->fetchAll();
+}
+
+function ghUpcomingExpected(PDO $pdo, int $limit = 8): array {
+    $stmt = $pdo->prepare("
+        SELECT b.*, g.full_name AS guest_name, g.organization, r.room_number
+        FROM guest_house_bookings b
+        JOIN guests g ON b.guest_id = g.guest_id
+        LEFT JOIN guest_house_rooms r ON b.room_id = r.room_id
+        WHERE b.check_in_date > CURDATE()
+          AND b.status = 'reserved'
+        ORDER BY b.check_in_date, b.booking_id
+        LIMIT :lim
+    ");
+    $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
 function ghStaysByPeriod(PDO $pdo, string $from, string $to): array {
     $stmt = $pdo->prepare("
         SELECT

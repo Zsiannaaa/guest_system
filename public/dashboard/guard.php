@@ -9,38 +9,13 @@ $pageTitle = 'Guard Dashboard';
 $db  = getDB();
 $today = date('Y-m-d');
 
-$insideNow  = getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE overall_status='checked_in'");
-$todayTotal = getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE visit_date=:d",[':d'=>$today]);
-$pending    = getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE overall_status='pending' AND visit_date=:d",[':d'=>$today]);
-$walkins    = getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE visit_date=:d AND registration_type='walk_in'",[':d'=>$today]);
-
-$activeStmt = $db->prepare("
-    SELECT gv.visit_id,gv.visit_reference,gv.actual_check_in,
-           g.full_name AS guest_name,g.is_restricted,
-           GROUP_CONCAT(o.office_name ORDER BY vd.sequence_no SEPARATOR ', ') AS destinations
-    FROM guest_visits gv
-    JOIN guests g ON gv.guest_id=g.guest_id
-    LEFT JOIN visit_destinations vd ON gv.visit_id=vd.visit_id
-    LEFT JOIN offices o ON vd.office_id=o.office_id
-    WHERE gv.overall_status='checked_in'
-    GROUP BY gv.visit_id ORDER BY gv.actual_check_in DESC LIMIT 6
-");
-$activeStmt->execute();
-$active = $activeStmt->fetchAll();
-
-$pendingStmt = $db->prepare("
-    SELECT gv.visit_id,gv.visit_reference,gv.visit_date,gv.expected_time_in,
-           g.full_name AS guest_name,
-           GROUP_CONCAT(o.office_name ORDER BY vd.sequence_no SEPARATOR ', ') AS destinations
-    FROM guest_visits gv
-    JOIN guests g ON gv.guest_id=g.guest_id
-    LEFT JOIN visit_destinations vd ON gv.visit_id=vd.visit_id
-    LEFT JOIN offices o ON vd.office_id=o.office_id
-    WHERE gv.overall_status='pending' AND gv.visit_date=:d
-    GROUP BY gv.visit_id ORDER BY gv.expected_time_in ASC LIMIT 5
-");
-$pendingStmt->execute([':d'=>$today]);
-$pendingVisits = $pendingStmt->fetchAll();
+$stats = getGuardDashboardStats($db);
+$insideNow = $stats['insideNow'];
+$todayTotal = $stats['totalToday'];
+$pending = $stats['pendingToday'];
+$walkins = $stats['walkinsToday'];
+$active = getActiveVisitorsForDashboard($db, 6, true);
+$pendingVisits = getPendingArrivalsForGuard($db, $today);
 
 include __DIR__ . '/../../includes/header.php';
 ?>

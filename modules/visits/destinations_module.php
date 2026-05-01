@@ -82,6 +82,7 @@ function getCurrentlyServing(PDO $pdo, int $officeId): array {
  * Fetch completed visit history for an office.
  */
 function getOfficeVisitHistory(PDO $pdo, int $officeId, int $limit = 200): array {
+    $limit = max(1, min($limit, 500));
     $stmt = $pdo->prepare("
         SELECT vd.*, gv.visit_reference, gv.visit_date, gv.overall_status,
                g.full_name AS guest_name, g.organization
@@ -174,8 +175,15 @@ function getAssignedOfficeIds(PDO $pdo, int $visitId): array {
  */
 function lookupActiveVisitorsForOffice(PDO $pdo, string $query, ?int $officeId = null): array {
     $where = "AND gv.overall_status='checked_in'";
+    $params = [':q1' => $query, ':q2' => "%{$query}%"];
     if ($officeId) {
-        $where .= " AND EXISTS (SELECT 1 FROM visit_destinations vd2 WHERE vd2.visit_id = gv.visit_id AND vd2.office_id = {$officeId})";
+        $where .= " AND EXISTS (
+            SELECT 1
+            FROM visit_destinations vd2
+            WHERE vd2.visit_id = gv.visit_id
+              AND vd2.office_id = :office_id
+        )";
+        $params[':office_id'] = $officeId;
     }
     $stmt = $pdo->prepare("
         SELECT gv.visit_id, gv.visit_reference, gv.purpose_of_visit, gv.actual_check_in,
@@ -185,6 +193,6 @@ function lookupActiveVisitorsForOffice(PDO $pdo, string $query, ?int $officeId =
         WHERE 1=1 {$where} AND (gv.visit_reference = :q1 OR g.full_name LIKE :q2)
         ORDER BY gv.actual_check_in DESC LIMIT 20
     ");
-    $stmt->execute([':q1' => $query, ':q2' => "%{$query}%"]);
+    $stmt->execute($params);
     return $stmt->fetchAll();
 }

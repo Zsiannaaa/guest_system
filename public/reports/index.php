@@ -12,24 +12,11 @@ $pageTitle = 'Reports'; $db = getDB();
 $dateFrom = $_GET['date_from'] ?? date('Y-m-01'); $dateTo = $_GET['date_to'] ?? date('Y-m-d');
 if (!strtotime($dateFrom)) $dateFrom = date('Y-m-01'); if (!strtotime($dateTo)) $dateTo = date('Y-m-d');
 if ($dateFrom > $dateTo) [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
-$params = [':from'=>$dateFrom,':to'=>$dateTo];
-
-$summary = [
-    'total_visits'   => getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE visit_date BETWEEN :from AND :to", $params),
-    'walk_ins'       => getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE visit_date BETWEEN :from AND :to AND registration_type='walk_in'", $params),
-    'pre_registered' => getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE visit_date BETWEEN :from AND :to AND registration_type='pre_registered'", $params),
-    'with_vehicle'   => getCountQuery("SELECT COUNT(*) FROM guest_visits WHERE visit_date BETWEEN :from AND :to AND has_vehicle=1", $params),
-    'unique_guests'  => getCountQuery("SELECT COUNT(DISTINCT guest_id) FROM guest_visits WHERE visit_date BETWEEN :from AND :to", $params),
-];
-
-$perDayStmt = $db->prepare("SELECT visit_date, COUNT(*) AS total, SUM(registration_type='walk_in') AS walk_ins, SUM(registration_type='pre_registered') AS pre_reg FROM guest_visits WHERE visit_date BETWEEN :from AND :to GROUP BY visit_date ORDER BY visit_date DESC");
-$perDayStmt->execute($params); $perDay = $perDayStmt->fetchAll();
-$perOfficeStmt = $db->prepare("SELECT o.office_name, COUNT(vd.destination_id) AS total, SUM(vd.is_unplanned) AS unplanned FROM visit_destinations vd JOIN offices o ON vd.office_id=o.office_id JOIN guest_visits gv ON vd.visit_id=gv.visit_id WHERE gv.visit_date BETWEEN :from AND :to GROUP BY o.office_id ORDER BY total DESC");
-$perOfficeStmt->execute($params); $perOffice = $perOfficeStmt->fetchAll();
-$statusStmt = $db->prepare("SELECT overall_status, COUNT(*) AS cnt FROM guest_visits WHERE visit_date BETWEEN :from AND :to GROUP BY overall_status");
-$statusStmt->execute($params); $statusBreakdown = $statusStmt->fetchAll();
-$guestListStmt = $db->prepare("SELECT gv.visit_reference, gv.visit_date, gv.overall_status, gv.registration_type, gv.actual_check_in, gv.actual_check_out, gv.has_vehicle, g.full_name AS guest_name, g.organization FROM guest_visits gv JOIN guests g ON gv.guest_id=g.guest_id WHERE gv.visit_date BETWEEN :from AND :to ORDER BY gv.visit_date DESC, gv.actual_check_in DESC");
-$guestListStmt->execute($params); $guestList = $guestListStmt->fetchAll();
+$summary = getReportSummary($db, $dateFrom, $dateTo);
+$perDay = getVisitsPerDay($db, $dateFrom, $dateTo);
+$perOffice = getVisitsPerOffice($db, $dateFrom, $dateTo);
+$statusBreakdown = getStatusBreakdown($db, $dateFrom, $dateTo);
+$guestList = getGuestVisitLog($db, $dateFrom, $dateTo);
 
 include __DIR__ . '/../../includes/header.php';
 ?>
