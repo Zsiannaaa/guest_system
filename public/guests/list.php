@@ -121,6 +121,11 @@ include __DIR__ . '/../../includes/header.php';
             <a href="<?= APP_URL ?>/public/guests/view.php?id=<?= $g['guest_id'] ?>" class="btn-tbl btn-tbl-outline">
               <i data-lucide="eye"></i> View
             </a>
+            <?php if (isAdminOrGuard()): ?>
+            <a href="<?= APP_URL ?>/public/guests/edit.php?id=<?= $g['guest_id'] ?>" class="btn-tbl btn-tbl-outline">
+              <i data-lucide="pencil"></i> Edit
+            </a>
+            <?php endif; ?>
             <?php if (isAdmin() && !$g['is_restricted']): ?>
             <a href="<?= APP_URL ?>/public/guests/restrict.php?id=<?= $g['guest_id'] ?>" class="btn-tbl btn-tbl-danger">
               <i data-lucide="ban"></i> Restrict
@@ -131,6 +136,17 @@ include __DIR__ . '/../../includes/header.php';
                data-confirm="Lift restriction for <?= htmlspecialchars($g['full_name']) ?>?">
               <i data-lucide="shield-check"></i> Lift
             </a>
+            <?php endif; ?>
+            <?php if (isAdmin()): ?>
+            <form method="POST" action="<?= APP_URL ?>/public/guests/delete.php" style="display:inline;">
+              <?= csrfField() ?>
+              <input type="hidden" name="guest_id" value="<?= (int)$g['guest_id'] ?>">
+              <input type="hidden" name="return_to" value="<?= APP_URL ?>/public/guests/list.php">
+              <button type="submit" class="btn-tbl btn-tbl-danger"
+                      data-confirm="Delete <?= e($g['full_name']) ?>? This only works when the guest has no visit or Guest House history.">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </form>
             <?php endif; ?>
           </div>
         </td>

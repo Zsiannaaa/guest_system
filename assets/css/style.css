@@ -1021,6 +1021,59 @@ textarea.form-control{resize:vertical;min-height:60px;}
   color:var(--primary);
 }
 
+.app-confirm-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(15,23,42,.46);
+}
+.app-confirm-backdrop.show{display:flex;}
+.app-confirm-modal{
+  width:min(430px,calc(100vw - 32px));
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:8px;
+  box-shadow:0 24px 70px rgba(15,23,42,.28);
+  padding:18px;
+}
+.app-confirm-header{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+.app-confirm-icon{
+  width:38px;
+  height:38px;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--warning-l);
+  color:#92400e;
+  flex-shrink:0;
+}
+.app-confirm-icon svg{width:20px;height:20px;}
+.app-confirm-title{
+  font-weight:800;
+  color:var(--text);
+  margin-bottom:4px;
+}
+.app-confirm-message{
+  color:var(--text-s);
+  font-size:.9rem;
+  line-height:1.5;
+}
+.app-confirm-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:18px;
+}
+
 /* Login page redesign */
 .login-page{
   min-height:100vh;

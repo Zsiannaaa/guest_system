@@ -31,6 +31,7 @@ if (isPost()) {
     if (empty($fullName)) $errors[] = 'Full name is required.';
     if (empty($purpose))  $errors[] = 'Purpose of visit is required.';
     if (empty($visitDate)) $errors[] = 'Visit date is required.';
+    if (!empty($visitDate) && $visitDate < date('Y-m-d')) $errors[] = 'Visit date cannot be in the past.';
     if (empty($destOffices)) $errors[] = 'At least one destination office is required.';
     if ($hasVehicle && empty($plateNumber)) $errors[] = 'Plate number is required for vehicle entry.';
 

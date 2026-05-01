@@ -30,6 +30,7 @@ if (isPost()) {
     if (empty($fullName))    $errors[] = 'Guest full name is required.';
     if (empty($purpose))     $errors[] = 'Purpose of visit is required.';
     if (empty($destOffices)) $errors[] = 'At least one destination office is required.';
+    if (!empty($visitDate) && $visitDate < date('Y-m-d')) $errors[] = 'Visit date cannot be in the past.';
 
     $vehicleType  = trim($_POST['vehicle_type'] ?? 'car');
     $plateNumber  = trim($_POST['plate_number'] ?? '');
@@ -167,7 +168,7 @@ $idTypes = ["Driver's License","Passport","SSS ID","PhilHealth ID","UMID","Voter
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Visit Date</label>
-            <input type="date" name="visit_date" class="form-control" value="<?= e($_POST['visit_date'] ?? date('Y-m-d')) ?>">
+            <input type="date" name="visit_date" class="form-control" min="<?= date('Y-m-d') ?>" value="<?= e($_POST['visit_date'] ?? date('Y-m-d')) ?>">
           </div>
           <div class="form-group">
             <label class="form-label">Guard Notes (optional)</label>

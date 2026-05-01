@@ -1,6 +1,6 @@
 <?php
 /**
- * public/dashboard/guest_house.php — Guest House staff dashboard
+ * public/dashboard/guest_house.php - Simple Guest House dashboard
  */
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/constants.php';
@@ -12,48 +12,61 @@ require_once __DIR__ . '/../../modules/gh_reports_module.php';
 requireRole([ROLE_ADMIN, ROLE_GUEST_HOUSE_STAFF]);
 $pageTitle = 'Guest House Dashboard';
 $db = getDB();
-$today = date('Y-m-d');
+
+if (isPost()) {
+    verifyCsrf(APP_URL . '/public/dashboard/guest_house.php');
+    $bid = inputInt('booking_id', 'POST');
+
+    if (isset($_POST['do_arrived'])) {
+        $err = ghCheckIn($db, $bid, currentUserId());
+        $err ? setFlash('error', $err) : setFlash('success', 'Guest marked as arrived.');
+    } elseif (isset($_POST['do_left'])) {
+        $err = ghCheckOut($db, $bid, currentUserId());
+        $err ? setFlash('error', $err) : setFlash('success', 'Guest marked as left.');
+    }
+
+    redirect(APP_URL . '/public/dashboard/guest_house.php');
+}
 
 $occ = ghOccupancyToday($db);
 
-$arrivalsToday   = $db->query("
-    SELECT b.*, g.full_name AS guest_name, r.room_number
+$expectedToday = $db->query("
+    SELECT b.*, g.full_name AS guest_name, g.organization, r.room_number
     FROM guest_house_bookings b
     JOIN guests g ON b.guest_id = g.guest_id
     LEFT JOIN guest_house_rooms r ON b.room_id = r.room_id
-    WHERE b.check_in_date = CURDATE() AND b.status IN ('reserved','checked_in','occupied')
-    ORDER BY b.booking_id DESC
+    WHERE b.check_in_date <= CURDATE()
+      AND b.status = 'reserved'
+    ORDER BY b.check_in_date, b.booking_id
 ")->fetchAll();
 
-$departuresToday = $db->query("
-    SELECT b.*, g.full_name AS guest_name, r.room_number
+$currentStays = ghCurrentOccupants($db);
+
+$upcoming = $db->query("
+    SELECT b.*, g.full_name AS guest_name, g.organization, r.room_number
     FROM guest_house_bookings b
     JOIN guests g ON b.guest_id = g.guest_id
     LEFT JOIN guest_house_rooms r ON b.room_id = r.room_id
-    WHERE b.check_out_date = CURDATE() AND b.status IN ('checked_in','occupied')
-    ORDER BY b.booking_id DESC
+    WHERE b.check_in_date > CURDATE()
+      AND b.status = 'reserved'
+    ORDER BY b.check_in_date, b.booking_id
+    LIMIT 8
 ")->fetchAll();
-
-$activeBookings  = (int)$db->query("SELECT COUNT(*) FROM guest_house_bookings WHERE status IN ('checked_in','occupied')")->fetchColumn();
-$reservedFuture  = (int)$db->query("SELECT COUNT(*) FROM guest_house_bookings WHERE status='reserved' AND check_in_date >= CURDATE()")->fetchColumn();
-
-// 7-day occupancy
-$daily = ghDailyOccupancy($db, date('Y-m-d', strtotime('-6 days')), $today);
 
 include __DIR__ . '/../../includes/header.php';
 ?>
 
 <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px;">
   <div>
-    <div class="page-title">Welcome, <?= e(explode(' ', currentUserName())[0]) ?>!</div>
-    <div class="page-subtitle">Guest House accommodation overview.</div>
+    <div class="page-title">Guest House</div>
+    <div class="page-subtitle">Expected guests, room assignments, and current stays.</div>
   </div>
   <div style="display:flex;gap:10px;">
     <a href="<?= APP_URL ?>/public/guest_house/booking_create.php" class="btn btn-primary">
-      <i data-lucide="calendar-plus"></i> New Booking
+      <i data-lucide="calendar-plus"></i> Add Expected Guest
     </a>
-    <a href="<?= APP_URL ?>/public/guest_house/occupants.php" class="btn btn-outline">
-      <i data-lucide="bed-double"></i> Occupants
+    <a href="<?= APP_URL ?>/public/guest_house/rooms.php" class="btn btn-outline">
+      <i data-lucide="door-open"></i> Rooms
     </a>
   </div>
 </div>
@@ -73,8 +86,8 @@ include __DIR__ . '/../../includes/header.php';
   <div class="stat-card">
     <div class="stat-card-top">
       <div>
-        <div class="stat-value"><?= count($arrivalsToday) ?></div>
-        <div class="stat-label">Arrivals Today</div>
+        <div class="stat-value"><?= count($expectedToday) ?></div>
+        <div class="stat-label">Expected Today</div>
       </div>
       <div class="stat-icon-wrap green"><i data-lucide="log-in"></i></div>
     </div>
@@ -83,22 +96,21 @@ include __DIR__ . '/../../includes/header.php';
   <div class="stat-card">
     <div class="stat-card-top">
       <div>
-        <div class="stat-value"><?= count($departuresToday) ?></div>
-        <div class="stat-label">Departures Today</div>
+        <div class="stat-value"><?= count($currentStays) ?></div>
+        <div class="stat-label">Currently Staying</div>
       </div>
-      <div class="stat-icon-wrap purple"><i data-lucide="log-out"></i></div>
+      <div class="stat-icon-wrap orange"><i data-lucide="users"></i></div>
     </div>
   </div>
 
   <div class="stat-card">
     <div class="stat-card-top">
       <div>
-        <div class="stat-value"><?= $activeBookings ?></div>
-        <div class="stat-label">Active Bookings</div>
+        <div class="stat-value"><?= count($upcoming) ?></div>
+        <div class="stat-label">Upcoming</div>
       </div>
-      <div class="stat-icon-wrap orange"><i data-lucide="users"></i></div>
+      <div class="stat-icon-wrap purple"><i data-lucide="calendar-days"></i></div>
     </div>
-    <div class="stat-trend" style="color:var(--text-m);"><?= $reservedFuture ?> future reservations</div>
   </div>
 </div>
 
@@ -106,28 +118,41 @@ include __DIR__ . '/../../includes/header.php';
 
   <div class="card">
     <div class="card-header">
-      Today's Arrivals
-      <a href="<?= APP_URL ?>/public/guest_house/checkin.php" class="view-all">Check-in queue</a>
+      Expected Today
+      <a href="<?= APP_URL ?>/public/guest_house/bookings.php?status=reserved" class="view-all">View all</a>
     </div>
     <div class="card-body p-0">
       <table class="data-table">
-        <thead><tr><th>Guest</th><th>Room</th><th>Status</th></tr></thead>
+        <thead><tr><th>Guest</th><th>Room</th><th>Action</th></tr></thead>
         <tbody>
-        <?php if (empty($arrivalsToday)): ?>
-        <tr><td colspan="3" style="text-align:center;padding:28px;color:var(--text-m);">No arrivals today.</td></tr>
-        <?php else: foreach ($arrivalsToday as $b): ?>
+        <?php if (empty($expectedToday)): ?>
+        <tr><td colspan="3" style="text-align:center;padding:28px;color:var(--text-m);">No expected arrivals today.</td></tr>
+        <?php else: foreach ($expectedToday as $b): ?>
         <tr>
           <td>
             <div class="guest-cell">
-              <div class="guest-avatar"><?= strtoupper(substr($b['guest_name'],0,1)) ?></div>
+              <div class="guest-avatar"><?= strtoupper(substr($b['guest_name'], 0, 1)) ?></div>
               <div>
                 <div class="guest-name"><?= e($b['guest_name']) ?></div>
-                <div class="guest-ref">REF: <?= e($b['booking_reference']) ?></div>
+                <?php if (!empty($b['organization'])): ?><div class="guest-ref"><?= e($b['organization']) ?></div><?php endif; ?>
               </div>
             </div>
           </td>
-          <td><?= e($b['room_number'] ?? '—') ?></td>
-          <td><span class="badge <?= $b['status']==='reserved'?'badge-warning':'badge-success' ?>"><?= statusLabel($b['status']) ?></span></td>
+          <td><?= e($b['room_number'] ?? 'Unassigned') ?></td>
+          <td>
+            <div class="tbl-actions">
+              <a href="<?= APP_URL ?>/public/guest_house/booking_view.php?id=<?= (int)$b['booking_id'] ?>" class="btn-tbl btn-tbl-outline"><i data-lucide="eye"></i> View</a>
+              <?php if (!empty($b['room_id'])): ?>
+              <form method="POST" style="display:inline;">
+                <?= csrfField() ?>
+                <input type="hidden" name="booking_id" value="<?= (int)$b['booking_id'] ?>">
+                <button type="submit" name="do_arrived" class="btn-tbl btn-tbl-success" data-confirm="Mark this guest as arrived?">
+                  <i data-lucide="log-in"></i> Arrived
+                </button>
+              </form>
+              <?php endif; ?>
+            </div>
+          </td>
         </tr>
         <?php endforeach; endif; ?>
         </tbody>
@@ -137,28 +162,39 @@ include __DIR__ . '/../../includes/header.php';
 
   <div class="card">
     <div class="card-header">
-      Today's Departures
-      <a href="<?= APP_URL ?>/public/guest_house/checkout.php" class="view-all">Check-out queue</a>
+      Currently Staying
+      <a href="<?= APP_URL ?>/public/guest_house/bookings.php?status=checked_in" class="view-all">View all</a>
     </div>
     <div class="card-body p-0">
       <table class="data-table">
-        <thead><tr><th>Guest</th><th>Room</th><th>Planned</th></tr></thead>
+        <thead><tr><th>Guest</th><th>Room</th><th>Action</th></tr></thead>
         <tbody>
-        <?php if (empty($departuresToday)): ?>
-        <tr><td colspan="3" style="text-align:center;padding:28px;color:var(--text-m);">No departures today.</td></tr>
-        <?php else: foreach ($departuresToday as $b): ?>
+        <?php if (empty($currentStays)): ?>
+        <tr><td colspan="3" style="text-align:center;padding:28px;color:var(--text-m);">No guests currently staying.</td></tr>
+        <?php else: foreach ($currentStays as $b): ?>
         <tr>
           <td>
             <div class="guest-cell">
-              <div class="guest-avatar"><?= strtoupper(substr($b['guest_name'],0,1)) ?></div>
+              <div class="guest-avatar"><?= strtoupper(substr($b['guest_name'], 0, 1)) ?></div>
               <div>
                 <div class="guest-name"><?= e($b['guest_name']) ?></div>
-                <div class="guest-ref">REF: <?= e($b['booking_reference']) ?></div>
+                <div class="guest-ref">Until <?= formatDate($b['check_out_date']) ?></div>
               </div>
             </div>
           </td>
-          <td><?= e($b['room_number'] ?? '—') ?></td>
-          <td style="font-size:.85rem;"><?= formatDate($b['check_out_date']) ?></td>
+          <td><?= e($b['room_number'] ?? 'Unassigned') ?></td>
+          <td>
+            <div class="tbl-actions">
+              <a href="<?= APP_URL ?>/public/guest_house/booking_view.php?id=<?= (int)$b['booking_id'] ?>" class="btn-tbl btn-tbl-outline"><i data-lucide="eye"></i> View</a>
+              <form method="POST" style="display:inline;">
+                <?= csrfField() ?>
+                <input type="hidden" name="booking_id" value="<?= (int)$b['booking_id'] ?>">
+                <button type="submit" name="do_left" class="btn-tbl btn-tbl-warn" data-confirm="Mark this guest as left?">
+                  <i data-lucide="log-out"></i> Left
+                </button>
+              </form>
+            </div>
+          </td>
         </tr>
         <?php endforeach; endif; ?>
         </tbody>
@@ -168,34 +204,29 @@ include __DIR__ . '/../../includes/header.php';
 </div>
 
 <div class="card">
-  <div class="card-header">Occupancy — Last 7 days</div>
-  <div class="card-body">
-    <canvas id="ghDailyChart" height="90"></canvas>
+  <div class="card-header">
+    Upcoming Expected Guests
+    <a href="<?= APP_URL ?>/public/guest_house/bookings.php" class="view-all">Open list</a>
+  </div>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead><tr><th>Guest</th><th>Organization</th><th>Room</th><th>Expected Dates</th><th></th></tr></thead>
+      <tbody>
+      <?php if (empty($upcoming)): ?>
+      <tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text-m);">No upcoming expected guests.</td></tr>
+      <?php else: foreach ($upcoming as $b): ?>
+      <tr>
+        <td style="font-weight:600;"><?= e($b['guest_name']) ?></td>
+        <td><?= e($b['organization'] ?? '') ?></td>
+        <td><?= e($b['room_number'] ?? 'Unassigned') ?></td>
+        <td style="font-size:.85rem;"><?= formatDate($b['check_in_date']) ?> to <?= formatDate($b['check_out_date']) ?></td>
+        <td><a href="<?= APP_URL ?>/public/guest_house/booking_view.php?id=<?= (int)$b['booking_id'] ?>" class="btn-tbl btn-tbl-outline"><i data-lucide="eye"></i> View</a></td>
+      </tr>
+      <?php endforeach; endif; ?>
+      </tbody>
+    </table>
   </div>
 </div>
 
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
-
-<script>
-const ctx = document.getElementById('ghDailyChart');
-if (ctx) {
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: <?= json_encode(array_column($daily, 'date')) ?>,
-      datasets: [{
-        label: 'Occupancy %',
-        data: <?= json_encode(array_column($daily, 'percent')) ?>,
-        backgroundColor: '#1f7a35',
-        borderRadius: 6,
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
-    }
-  });
-}
-lucide.createIcons();
-</script>
+<script>lucide.createIcons();</script>

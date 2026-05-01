@@ -37,10 +37,26 @@ include __DIR__ . '/../../includes/header.php';
     <a href="<?= APP_URL ?>/public/guests/export.php?id=<?= $guestId ?>" class="btn btn-outline">
       <i data-lucide="download"></i> Export Profile
     </a>
+    <?php if (isAdminOrGuard()): ?>
+    <a href="<?= APP_URL ?>/public/guests/edit.php?id=<?= $guestId ?>" class="btn btn-outline">
+      <i data-lucide="pencil"></i> Edit Info
+    </a>
+    <?php endif; ?>
     <?php if (isAdmin() && !$guest['is_restricted']): ?>
     <a href="<?= APP_URL ?>/public/guests/restrict.php?id=<?= $guestId ?>" class="btn btn-outline" style="color:var(--danger);border-color:var(--danger);"><i data-lucide="shield-off"></i> Restrict</a>
     <?php elseif (isAdmin() && $guest['is_restricted']): ?>
     <a href="<?= APP_URL ?>/public/guests/lift_restriction.php?id=<?= $guestId ?>" class="btn btn-success"><i data-lucide="shield-check"></i> Lift Restriction</a>
+    <?php endif; ?>
+    <?php if (isAdmin()): ?>
+    <form method="POST" action="<?= APP_URL ?>/public/guests/delete.php" style="display:inline;">
+      <?= csrfField() ?>
+      <input type="hidden" name="guest_id" value="<?= $guestId ?>">
+      <input type="hidden" name="return_to" value="<?= APP_URL ?>/public/guests/view.php?id=<?= $guestId ?>">
+      <button type="submit" class="btn btn-outline" style="color:var(--danger);border-color:var(--danger);"
+              data-confirm="Delete <?= e($guest['full_name']) ?>? This only works when the guest has no visit or Guest House history.">
+        <i data-lucide="trash-2"></i> Delete
+      </button>
+    </form>
     <?php endif; ?>
   </div>
 </div>

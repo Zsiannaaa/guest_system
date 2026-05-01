@@ -32,6 +32,79 @@ function getGuestById(PDO $pdo, int $id): array|false {
 }
 
 /**
+ * Update editable personal information for a guest.
+ * Returns error string or null on success.
+ */
+function updateGuest(PDO $pdo, int $id, array $data): ?string {
+    $fullName = trim($data['full_name'] ?? '');
+    $contact  = trim($data['contact_number'] ?? '');
+    $email    = trim($data['email'] ?? '');
+    $org      = trim($data['organization'] ?? '');
+    $address  = trim($data['address'] ?? '');
+    $idType   = trim($data['id_type'] ?? '');
+
+    if ($id <= 0) return 'Invalid guest record.';
+    if ($fullName === '') return 'Full name is required.';
+    if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return 'Enter a valid email address.';
+    }
+
+    $stmt = $pdo->prepare("
+        UPDATE guests
+        SET full_name = :full_name,
+            contact_number = :contact_number,
+            email = :email,
+            organization = :organization,
+            address = :address,
+            id_type = :id_type
+        WHERE guest_id = :id
+    ");
+    $stmt->execute([
+        ':full_name'      => $fullName,
+        ':contact_number' => $contact !== '' ? $contact : null,
+        ':email'          => $email !== '' ? $email : null,
+        ':organization'   => $org !== '' ? $org : null,
+        ':address'        => $address !== '' ? $address : null,
+        ':id_type'        => $idType !== '' ? $idType : null,
+        ':id'             => $id,
+    ]);
+
+    return null;
+}
+
+/**
+ * Delete a guest only when no visit or accommodation history exists.
+ * Returns error string or null on success.
+ */
+function deleteGuest(PDO $pdo, int $id): ?string {
+    if ($id <= 0) return 'Invalid guest record.';
+
+    $stmt = $pdo->prepare("SELECT full_name FROM guests WHERE guest_id = :id");
+    $stmt->execute([':id' => $id]);
+    if (!$stmt->fetchColumn()) return 'Guest record not found.';
+
+    $visitStmt = $pdo->prepare("SELECT COUNT(*) FROM guest_visits WHERE guest_id = :id");
+    $visitStmt->execute([':id' => $id]);
+    $visitCount = (int)$visitStmt->fetchColumn();
+
+    $bookingCount = 0;
+    $tableStmt = $pdo->query("SHOW TABLES LIKE 'guest_house_bookings'");
+    if ($tableStmt->fetchColumn()) {
+        $bookingStmt = $pdo->prepare("SELECT COUNT(*) FROM guest_house_bookings WHERE guest_id = :id");
+        $bookingStmt->execute([':id' => $id]);
+        $bookingCount = (int)$bookingStmt->fetchColumn();
+    }
+
+    if ($visitCount > 0 || $bookingCount > 0) {
+        return 'This guest cannot be deleted because they already have visit or Guest House history. You can edit their personal information instead.';
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM guests WHERE guest_id = :id");
+    $stmt->execute([':id' => $id]);
+    return null;
+}
+
+/**
  * Fetch visit history for a guest.
  */
 function getGuestVisitHistory(PDO $pdo, int $guestId): array {

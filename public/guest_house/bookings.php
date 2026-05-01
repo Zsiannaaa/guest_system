@@ -1,6 +1,6 @@
 <?php
 /**
- * public/guest_house/bookings.php — Booking list
+ * public/guest_house/bookings.php - Expected Guest House guests
  */
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/constants.php';
@@ -9,78 +9,90 @@ require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/gh_bookings_module.php';
 
 requireRole([ROLE_ADMIN, ROLE_GUEST_HOUSE_STAFF]);
-$pageTitle = 'Guest House — Bookings';
+$pageTitle = 'Guest House - Expected Guests';
 $db = getDB();
 
+if (isPost()) {
+    verifyCsrf(APP_URL . '/public/guest_house/bookings.php');
+    $bid = inputInt('booking_id', 'POST');
+
+    if (isset($_POST['do_arrived'])) {
+        $err = ghCheckIn($db, $bid, currentUserId());
+        $err ? setFlash('error', $err) : setFlash('success', 'Guest marked as arrived.');
+    } elseif (isset($_POST['do_left'])) {
+        $err = ghCheckOut($db, $bid, currentUserId());
+        $err ? setFlash('error', $err) : setFlash('success', 'Guest marked as left.');
+    }
+
+    redirect(APP_URL . '/public/guest_house/bookings.php');
+}
+
 $filters = [
-    'status'    => inputStr('status','GET'),
-    'q'         => inputStr('q','GET'),
-    'from'      => inputStr('from','GET'),
-    'to'        => inputStr('to','GET'),
-    'office_id' => inputInt('office_id','GET'),
+    'status' => inputStr('status', 'GET'),
+    'q'      => inputStr('q', 'GET'),
+    'from'   => inputStr('from', 'GET'),
+    'to'     => inputStr('to', 'GET'),
 ];
 $bookings = ghListBookings($db, $filters);
-$offices  = $db->query("SELECT office_id, office_name FROM offices WHERE status='active' ORDER BY office_name")->fetchAll();
 
 include __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="page-top">
   <div>
-    <div class="page-title">Guest House Bookings</div>
+    <div class="page-title">Expected Guests</div>
     <ul class="breadcrumb">
       <li><a href="<?= APP_URL ?>/public/dashboard/guest_house.php">Guest House</a></li>
-      <li>Bookings</li>
+      <li>Expected Guests</li>
     </ul>
   </div>
   <div class="page-actions">
     <a href="<?= APP_URL ?>/public/guest_house/booking_create.php" class="btn btn-primary">
-      <i data-lucide="calendar-plus"></i> New Booking
+      <i data-lucide="calendar-plus"></i> Add Expected Guest
     </a>
   </div>
 </div>
 
 <div class="card">
   <form method="GET" class="table-toolbar" style="flex-wrap:wrap;">
-    <div class="table-search"><i data-lucide="search" class="table-search-icon"></i>
-      <input type="text" name="q" value="<?= e($filters['q']) ?>" placeholder="Search guest or reference…"></div>
+    <div class="table-search">
+      <i data-lucide="search" class="table-search-icon"></i>
+      <input type="text" name="q" value="<?= e($filters['q']) ?>" placeholder="Search name, reference, or organization">
+    </div>
     <select name="status" class="table-filter">
       <option value="">All Status</option>
-      <?php foreach (['reserved','checked_in','occupied','checked_out','cancelled','no_show'] as $s): ?>
-      <option value="<?= $s ?>" <?= ($filters['status']===$s)?'selected':'' ?>><?= statusLabel($s) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <select name="office_id" class="table-filter">
-      <option value="">All Sponsors</option>
-      <?php foreach ($offices as $o): ?>
-      <option value="<?= (int)$o['office_id'] ?>" <?= ((int)$filters['office_id']===(int)$o['office_id'])?'selected':'' ?>><?= e($o['office_name']) ?></option>
+      <?php foreach (['reserved', 'checked_in', 'checked_out', 'cancelled'] as $s): ?>
+      <option value="<?= $s ?>" <?= ($filters['status'] === $s) ? 'selected' : '' ?>><?= statusLabel($s) ?></option>
       <?php endforeach; ?>
     </select>
     <input type="date" name="from" value="<?= e($filters['from']) ?>" class="table-filter" title="From">
-    <input type="date" name="to"   value="<?= e($filters['to']) ?>"   class="table-filter" title="To">
+    <input type="date" name="to" value="<?= e($filters['to']) ?>" class="table-filter" title="To">
     <button class="btn btn-outline"><i data-lucide="filter"></i> Filter</button>
     <a class="btn btn-outline" href="<?= APP_URL ?>/public/guest_house/bookings.php"><i data-lucide="x"></i> Reset</a>
-    <div class="table-count"><?= count($bookings) ?> bookings</div>
+    <div class="table-count"><?= count($bookings) ?> records</div>
   </form>
 
   <div class="table-responsive">
     <table class="data-table">
       <thead><tr>
-        <th>Reference</th><th>Guest</th><th>Room</th><th>Dates</th><th>Sponsor</th><th>Status</th><th>Actions</th>
+        <th>Reference</th><th>Guest</th><th>Room</th><th>Stay Dates</th><th>Status</th><th>Actions</th>
       </tr></thead>
       <tbody>
       <?php if (empty($bookings)): ?>
-      <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-m);">No bookings found.</td></tr>
+      <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-m);">No expected guests found.</td></tr>
       <?php else: foreach ($bookings as $b): ?>
       <tr>
         <td><code style="font-size:.8rem;background:var(--bg);padding:2px 6px;border-radius:4px;"><?= e($b['booking_reference']) ?></code></td>
         <td>
           <div class="guest-cell">
-            <div class="guest-avatar"><?= strtoupper(substr($b['guest_name'],0,1)) ?></div>
+            <div class="guest-avatar"><?= strtoupper(substr($b['guest_name'], 0, 1)) ?></div>
             <div>
               <div class="guest-name"><?= e($b['guest_name']) ?></div>
               <?php if (!empty($b['organization'])): ?>
               <div class="guest-ref"><?= e($b['organization']) ?></div>
+              <?php endif; ?>
+              <?php if (!empty($b['contact_number'])): ?>
+              <div class="guest-ref"><?= e($b['contact_number']) ?></div>
               <?php endif; ?>
             </div>
           </div>
@@ -89,28 +101,47 @@ include __DIR__ . '/../../includes/header.php';
           <?php if (!empty($b['room_number'])): ?>
             <strong><?= e($b['room_number']) ?></strong>
             <div style="font-size:.75rem;color:var(--text-m);"><?= e($b['type_name'] ?? '') ?></div>
-          <?php else: ?><span style="color:var(--text-m);">Unassigned</span><?php endif; ?>
+          <?php else: ?>
+            <span style="color:var(--text-m);">Unassigned</span>
+          <?php endif; ?>
         </td>
         <td style="font-size:.83rem;">
           <?= formatDate($b['check_in_date']) ?><br>
           <span style="color:var(--text-m);">to <?= formatDate($b['check_out_date']) ?></span>
         </td>
-        <td style="font-size:.83rem;">
-          <?= e($b['sponsor_office_name'] ?? $b['external_sponsor'] ?? '—') ?>
-        </td>
         <td>
-          <span class="badge <?= match($b['status']) {
-              'reserved'    => 'badge-warning',
-              'checked_in','occupied' => 'badge-success',
+          <span class="badge <?= match ($b['status']) {
+              'reserved' => 'badge-warning',
+              'checked_in', 'occupied' => 'badge-success',
               'checked_out' => 'badge-secondary',
-              'cancelled'   => 'badge-danger',
-              default       => 'badge-secondary',
+              'cancelled' => 'badge-danger',
+              default => 'badge-secondary',
           } ?>"><?= statusLabel($b['status']) ?></span>
         </td>
         <td>
-          <a href="booking_view.php?id=<?= (int)$b['booking_id'] ?>" class="btn-tbl btn-tbl-outline">
-            <i data-lucide="eye"></i> View
-          </a>
+          <div class="tbl-actions">
+            <a href="booking_view.php?id=<?= (int)$b['booking_id'] ?>" class="btn-tbl btn-tbl-outline">
+              <i data-lucide="eye"></i> View
+            </a>
+            <?php if ($b['status'] === 'reserved' && !empty($b['room_id'])): ?>
+            <form method="POST" style="display:inline;">
+              <?= csrfField() ?>
+              <input type="hidden" name="booking_id" value="<?= (int)$b['booking_id'] ?>">
+              <button type="submit" name="do_arrived" class="btn-tbl btn-tbl-success" data-confirm="Mark this guest as arrived?">
+                <i data-lucide="log-in"></i> Arrived
+              </button>
+            </form>
+            <?php endif; ?>
+            <?php if (in_array($b['status'], ['checked_in', 'occupied'], true)): ?>
+            <form method="POST" style="display:inline;">
+              <?= csrfField() ?>
+              <input type="hidden" name="booking_id" value="<?= (int)$b['booking_id'] ?>">
+              <button type="submit" name="do_left" class="btn-tbl btn-tbl-warn" data-confirm="Mark this guest as left?">
+                <i data-lucide="log-out"></i> Left
+              </button>
+            </form>
+            <?php endif; ?>
+          </div>
         </td>
       </tr>
       <?php endforeach; endif; ?>

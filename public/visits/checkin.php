@@ -143,6 +143,7 @@ if (isPost() && isset($_POST['create_known_checkin'])) {
     elseif ($guestForCheckin['is_restricted']) $knownCheckinErrors[] = 'This guest is restricted and cannot be checked in. Contact an administrator.';
     if (empty($purpose)) $knownCheckinErrors[] = 'Purpose of visit is required.';
     if (empty($visitDate)) $knownCheckinErrors[] = 'Visit date is required.';
+    if (!empty($visitDate) && $visitDate < date('Y-m-d')) $knownCheckinErrors[] = 'Visit date cannot be in the past.';
     if (empty($destOffices)) $knownCheckinErrors[] = 'At least one destination office is required.';
     if ($reuseVehicle && empty($plateNumber)) $knownCheckinErrors[] = 'Plate number is required when vehicle entry is selected.';
 
@@ -389,7 +390,7 @@ include __DIR__ . '/../../includes/header.php';
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Visit Date</label>
-            <input type="date" name="visit_date" class="form-control" value="<?= e($_POST['visit_date'] ?? date('Y-m-d')) ?>">
+            <input type="date" name="visit_date" class="form-control" min="<?= date('Y-m-d') ?>" value="<?= e($_POST['visit_date'] ?? date('Y-m-d')) ?>">
           </div>
           <div class="form-group">
             <label class="form-label">Guard Notes (optional)</label>

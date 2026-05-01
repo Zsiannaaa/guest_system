@@ -51,12 +51,6 @@ function updateClock() {
 updateClock();
 setInterval(updateClock, 30000);
 
-// Confirm dialogs
-document.querySelectorAll('[data-confirm]').forEach(el => {
-  el.addEventListener('click', function(e) {
-    if (!confirm(this.dataset.confirm)) e.preventDefault();
-  });
-});
 </script>
 </body>
 </html>

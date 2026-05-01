@@ -136,7 +136,7 @@ function statusLabel(string $status): string {
         'guard'          => 'Guard / Reception',
         'office_staff'   => 'Office Staff',
         'guest_house_staff' => 'Guest House Staff',
-        'reserved'       => 'Reserved',
+        'reserved'       => 'Expected',
         'occupied'       => 'Occupied',
         'no_show'        => 'No-show',
         'available'      => 'Available',

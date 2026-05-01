@@ -24,8 +24,8 @@ if (isOfficeStaff()) {
 } elseif (isGuestHouseStaff()) {
     $quickActionUrl = APP_URL . '/public/guest_house/bookings.php';
     $quickActionIcon = 'calendar-days';
-    $quickActionLabel = 'Bookings';
-    $quickDropdownLabel = 'Guest House Bookings';
+    $quickActionLabel = 'Expected';
+    $quickDropdownLabel = 'Expected Guests';
 }
 ?>
 <!DOCTYPE html>
@@ -101,26 +101,20 @@ if (isOfficeStaff()) {
     </a>
 
     <div class="nav-section-label">Guest House</div>
+    <a href="<?= APP_URL ?>/public/dashboard/guest_house.php" class="nav-item<?= navActive('/dashboard/guest_house') ?>">
+      <i data-lucide="layout-dashboard" class="nav-icon"></i><span class="nav-label">GH Dashboard</span>
+    </a>
     <a href="<?= APP_URL ?>/public/guest_house/bookings.php" class="nav-item<?= navActive('/guest_house/bookings') ?>">
-      <i data-lucide="calendar-days" class="nav-icon"></i><span class="nav-label">Bookings</span>
+      <i data-lucide="calendar-days" class="nav-icon"></i><span class="nav-label">Expected Guests</span>
     </a>
-    <a href="<?= APP_URL ?>/public/guest_house/checkin.php" class="nav-item<?= navActive('/guest_house/checkin') ?>">
-      <i data-lucide="log-in" class="nav-icon"></i><span class="nav-label">GH Check-in</span>
-    </a>
-    <a href="<?= APP_URL ?>/public/guest_house/checkout.php" class="nav-item<?= navActive('/guest_house/checkout') ?>">
-      <i data-lucide="log-out" class="nav-icon"></i><span class="nav-label">GH Check-out</span>
-    </a>
-    <a href="<?= APP_URL ?>/public/guest_house/occupants.php" class="nav-item<?= navActive('/guest_house/occupants') ?>">
-      <i data-lucide="bed-double" class="nav-icon"></i><span class="nav-label">Current Occupants</span>
+    <a href="<?= APP_URL ?>/public/guest_house/booking_create.php" class="nav-item<?= navActive('/guest_house/booking_create') ?>">
+      <i data-lucide="calendar-plus" class="nav-icon"></i><span class="nav-label">Add Expected Guest</span>
     </a>
     <a href="<?= APP_URL ?>/public/guest_house/rooms.php" class="nav-item<?= navActive('/guest_house/rooms') ?>">
       <i data-lucide="door-open" class="nav-icon"></i><span class="nav-label">Rooms</span>
     </a>
     <a href="<?= APP_URL ?>/public/guest_house/room_types.php" class="nav-item<?= navActive('/guest_house/room_types') ?>">
       <i data-lucide="layers" class="nav-icon"></i><span class="nav-label">Room Types</span>
-    </a>
-    <a href="<?= APP_URL ?>/public/guest_house/reports.php" class="nav-item<?= navActive('/guest_house/reports') ?>">
-      <i data-lucide="pie-chart" class="nav-icon"></i><span class="nav-label">GH Reports</span>
     </a>
 
   <?php elseif (isGuestHouseStaff()): ?>
@@ -131,29 +125,15 @@ if (isOfficeStaff()) {
 
     <div class="nav-section-label">Guest House</div>
     <a href="<?= APP_URL ?>/public/guest_house/bookings.php" class="nav-item<?= navActive('/guest_house/bookings') ?>">
-      <i data-lucide="calendar-days" class="nav-icon"></i><span class="nav-label">Bookings</span>
+      <i data-lucide="calendar-days" class="nav-icon"></i><span class="nav-label">Expected Guests</span>
     </a>
     <a href="<?= APP_URL ?>/public/guest_house/booking_create.php" class="nav-item<?= navActive('/guest_house/booking_create') ?>">
-      <i data-lucide="calendar-plus" class="nav-icon"></i><span class="nav-label">New Booking</span>
-    </a>
-    <a href="<?= APP_URL ?>/public/guest_house/checkin.php" class="nav-item<?= navActive('/guest_house/checkin') ?>">
-      <i data-lucide="log-in" class="nav-icon"></i><span class="nav-label">Check-in</span>
-    </a>
-    <a href="<?= APP_URL ?>/public/guest_house/checkout.php" class="nav-item<?= navActive('/guest_house/checkout') ?>">
-      <i data-lucide="log-out" class="nav-icon"></i><span class="nav-label">Check-out</span>
-    </a>
-    <a href="<?= APP_URL ?>/public/guest_house/occupants.php" class="nav-item<?= navActive('/guest_house/occupants') ?>">
-      <i data-lucide="bed-double" class="nav-icon"></i><span class="nav-label">Current Occupants</span>
+      <i data-lucide="calendar-plus" class="nav-icon"></i><span class="nav-label">Add Expected Guest</span>
     </a>
 
     <div class="nav-section-label">Rooms</div>
     <a href="<?= APP_URL ?>/public/guest_house/rooms.php" class="nav-item<?= navActive('/guest_house/rooms') ?>">
       <i data-lucide="door-open" class="nav-icon"></i><span class="nav-label">Rooms</span>
-    </a>
-
-    <div class="nav-section-label">Reports</div>
-    <a href="<?= APP_URL ?>/public/guest_house/reports.php" class="nav-item<?= navActive('/guest_house/reports') ?>">
-      <i data-lucide="pie-chart" class="nav-icon"></i><span class="nav-label">GH Reports</span>
     </a>
 
   <?php elseif (isGuard()): ?>
