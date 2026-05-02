@@ -173,7 +173,7 @@ if (isOfficeStaff()) {
       <i data-lucide="arrow-down-circle" class="nav-icon"></i><span class="nav-label">Incoming</span>
     </a>
     <a href="<?= APP_URL ?>/public/office/current.php" class="nav-item<?= navActive('/office/current') ?>">
-      <i data-lucide="user-check" class="nav-icon"></i><span class="nav-label">Currently Serving</span>
+      <i data-lucide="user-check" class="nav-icon"></i><span class="nav-label">Arrived Guests</span>
     </a>
     <a href="<?= APP_URL ?>/public/office/history.php" class="nav-item<?= navActive('/office/history') ?>">
       <i data-lucide="history" class="nav-icon"></i><span class="nav-label">History</span>

@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/visits/visits_module.php';
-requireLogin();
+requireRole([ROLE_GUARD, ROLE_ADMIN]);
 $pageTitle = 'Active Visitors';
 $db = getDB();
 
@@ -152,6 +152,9 @@ include __DIR__ . '/../../includes/header.php';
           <div class="tbl-actions">
             <a href="<?= APP_URL ?>/public/visits/view.php?id=<?= $v['visit_id'] ?>" class="btn-tbl btn-tbl-outline">
               <i data-lucide="eye"></i> View
+            </a>
+            <a href="<?= APP_URL ?>/public/visits/receipt.php?id=<?= $v['visit_id'] ?>" class="btn-tbl btn-tbl-outline">
+              <i data-lucide="printer"></i> Slip
             </a>
             <?php if (isAdminOrGuard()): ?>
             <a href="<?= APP_URL ?>/public/visits/checkout.php?id=<?= $v['visit_id'] ?>" class="btn-tbl btn-tbl-warn">

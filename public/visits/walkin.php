@@ -85,7 +85,8 @@ if (isPost()) {
                 logActivity($visitId, 'walk_in_registration', currentUserId(), null, "Walk-in guest '{$fullName}' registered: {$visitRef}");
                 logActivity($visitId, 'check_in', currentUserId(), null, "Guard checked in walk-in guest '{$fullName}'");
                 $db->commit();
-                setFlash('success', "Walk-in guest registered! Reference: <strong>{$visitRef}</strong>");
+                $printUrl = APP_URL . '/public/visits/receipt.php?id=' . $visitId;
+                setFlash('success', "Walk-in guest registered! Reference: <strong>" . e($visitRef) . "</strong>. <a href=\"{$printUrl}\" style=\"font-weight:800;color:inherit;text-decoration:underline;\">Print gate slip</a>");
                 redirect(APP_URL . '/public/visits/view.php?id=' . $visitId);
             }
         } catch (PDOException $e) {

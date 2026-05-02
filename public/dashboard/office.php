@@ -41,7 +41,7 @@ include __DIR__ . '/../../includes/header.php';
   </div>
   <div class="stat-card">
     <div class="stat-card-top">
-      <div><div class="stat-value"><?= $serving ?></div><div class="stat-label">Currently Serving</div></div>
+      <div><div class="stat-value"><?= $serving ?></div><div class="stat-label">Arrived Guests</div></div>
       <div class="stat-icon-wrap green"><i data-lucide="user-check"></i></div>
     </div>
     <div class="stat-trend live"><span class="live-dot"></span> Live</div>
@@ -96,10 +96,10 @@ include __DIR__ . '/../../includes/header.php';
     </div>
   </div>
 
-  <!-- Currently Serving -->
+  <!-- Arrived Guests -->
   <div class="card">
     <div class="card-header">
-      Currently Serving
+      Arrived Guests
       <a href="<?= APP_URL ?>/public/office/current.php" class="view-all">View all</a>
     </div>
     <div class="card-body p-0">
@@ -107,7 +107,7 @@ include __DIR__ . '/../../includes/header.php';
         <thead><tr><th>Guest</th><th>Status</th><th>Arrived</th><th></th></tr></thead>
         <tbody>
         <?php if(empty($servingList)): ?>
-        <tr><td colspan="4" style="text-align:center;padding:28px;color:var(--text-m);">No guests being served.</td></tr>
+        <tr><td colspan="4" style="text-align:center;padding:28px;color:var(--text-m);">No arrived guests.</td></tr>
         <?php else: foreach($servingList as $v): ?>
         <tr>
           <td>

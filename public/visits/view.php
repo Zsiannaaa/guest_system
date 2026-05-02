@@ -22,14 +22,27 @@ if (isOfficeStaff()) {
     if (!$chk->fetchColumn()) { setFlash('error','No permission.'); redirect(getDashboardUrl()); }
 }
 
-$destStmt = $db->prepare("SELECT vd.*, o.office_name, u.full_name AS received_by_name FROM visit_destinations vd JOIN offices o ON vd.office_id=o.office_id LEFT JOIN users u ON vd.received_by_user_id=u.user_id WHERE vd.visit_id=:vid ORDER BY vd.sequence_no");
-$destStmt->execute([':vid'=>$visitId]); $destinations = $destStmt->fetchAll();
+$officeScopedView = isOfficeStaff() && !isAdmin();
+if ($officeScopedView) {
+    $destStmt = $db->prepare("SELECT vd.*, o.office_name, u.full_name AS received_by_name FROM visit_destinations vd JOIN offices o ON vd.office_id=o.office_id LEFT JOIN users u ON vd.received_by_user_id=u.user_id WHERE vd.visit_id=:vid AND vd.office_id=:oid ORDER BY vd.sequence_no");
+    $destStmt->execute([':vid'=>$visitId, ':oid'=>currentOfficeId()]);
+} else {
+    $destStmt = $db->prepare("SELECT vd.*, o.office_name, u.full_name AS received_by_name FROM visit_destinations vd JOIN offices o ON vd.office_id=o.office_id LEFT JOIN users u ON vd.received_by_user_id=u.user_id WHERE vd.visit_id=:vid ORDER BY vd.sequence_no");
+    $destStmt->execute([':vid'=>$visitId]);
+}
+$destinations = $destStmt->fetchAll();
 
 $vehStmt = $db->prepare("SELECT * FROM vehicle_entries WHERE visit_id=:vid");
 $vehStmt->execute([':vid'=>$visitId]); $vehicle = $vehStmt->fetch();
 
-$logStmt = $db->prepare("SELECT al.*, u.full_name AS actor_name FROM activity_logs al LEFT JOIN users u ON al.performed_by_user_id=u.user_id WHERE al.visit_id=:vid ORDER BY al.logged_at ASC");
-$logStmt->execute([':vid'=>$visitId]); $logs = $logStmt->fetchAll();
+if ($officeScopedView) {
+    $logStmt = $db->prepare("SELECT al.*, u.full_name AS actor_name FROM activity_logs al LEFT JOIN users u ON al.performed_by_user_id=u.user_id WHERE al.visit_id=:vid AND al.office_id=:oid ORDER BY al.logged_at ASC");
+    $logStmt->execute([':vid'=>$visitId, ':oid'=>currentOfficeId()]);
+} else {
+    $logStmt = $db->prepare("SELECT al.*, u.full_name AS actor_name FROM activity_logs al LEFT JOIN users u ON al.performed_by_user_id=u.user_id WHERE al.visit_id=:vid ORDER BY al.logged_at ASC");
+    $logStmt->execute([':vid'=>$visitId]);
+}
+$logs = $logStmt->fetchAll();
 
 $sc = match($visit['overall_status']) { 'pending'=>'badge-warning','checked_in'=>'badge-success','checked_out'=>'badge-secondary','cancelled'=>'badge-danger','overstayed'=>'badge-danger',default=>'badge-secondary' };
 
@@ -42,6 +55,9 @@ include __DIR__ . '/../../includes/header.php';
     <ul class="breadcrumb"><li><a href="<?= getDashboardUrl() ?>">Dashboard</a></li><li><?= e($visit['visit_reference']) ?></li></ul>
   </div>
   <div class="page-actions">
+    <?php if (in_array($visit['overall_status'], ['checked_in', 'checked_out'], true) && isAdminOrGuard()): ?>
+    <a href="<?= APP_URL ?>/public/visits/receipt.php?id=<?= $visitId ?>" class="btn btn-outline"><i data-lucide="printer"></i> Print Gate Slip</a>
+    <?php endif; ?>
     <?php if ($visit['overall_status']==='pending' && isAdminOrGuard()): ?>
     <a href="<?= APP_URL ?>/public/visits/checkin.php?id=<?= $visitId ?>" class="btn btn-success"><i data-lucide="log-in"></i> Check In</a>
     <?php endif; ?>
@@ -76,10 +92,14 @@ include __DIR__ . '/../../includes/header.php';
       <div class="card-body" style="padding:0;">
         <dl style="margin:0;">
           <div class="detail-row" style="padding:10px 18px;"><dt>Full Name</dt><dd style="font-weight:700;"><?= e($visit['guest_name']) ?></dd></div>
+          <?php if (!$officeScopedView): ?>
           <div class="detail-row" style="padding:10px 18px;"><dt>Contact</dt><dd><?= e($visit['contact_number'] ?? '—') ?></dd></div>
           <div class="detail-row" style="padding:10px 18px;"><dt>Email</dt><dd><?= e($visit['email'] ?? '—') ?></dd></div>
+          <?php endif; ?>
           <div class="detail-row" style="padding:10px 18px;"><dt>Organization</dt><dd><?= e($visit['organization'] ?? '—') ?></dd></div>
+          <?php if (!$officeScopedView): ?>
           <div class="detail-row" style="padding:10px 18px;"><dt>ID Type</dt><dd><?= e($visit['id_type'] ?? '—') ?></dd></div>
+          <?php endif; ?>
         </dl>
       </div>
     </div>
@@ -94,7 +114,9 @@ include __DIR__ . '/../../includes/header.php';
           <div class="detail-row" style="padding:10px 18px;"><dt>Expected Out</dt><dd><?= formatTime($visit['expected_time_out']) ?></dd></div>
           <div class="detail-row" style="padding:10px 18px;"><dt>Checked In</dt><dd style="color:var(--success);font-weight:600;"><?= formatDateTime($visit['actual_check_in']) ?></dd></div>
           <div class="detail-row" style="padding:10px 18px;"><dt>Checked Out</dt><dd style="color:var(--danger);font-weight:600;"><?= formatDateTime($visit['actual_check_out']) ?></dd></div>
+          <?php if (!$officeScopedView): ?>
           <div class="detail-row" style="padding:10px 18px;"><dt>Processed By</dt><dd><?= e($visit['guard_name'] ?? '—') ?></dd></div>
+          <?php endif; ?>
         </dl>
       </div>
     </div>
@@ -111,7 +133,7 @@ include __DIR__ . '/../../includes/header.php';
     </div>
 
     <!-- Vehicle -->
-    <?php if ($vehicle): ?>
+    <?php if ($vehicle && !$officeScopedView): ?>
     <div class="card">
       <div class="card-header"><i data-lucide="car" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Vehicle</div>
       <div class="card-body" style="padding:0;">

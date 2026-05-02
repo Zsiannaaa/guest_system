@@ -23,18 +23,15 @@ if (isPost()) {
     if ($action==='confirm_arrival') {
         $db->prepare("UPDATE visit_destinations SET destination_status='arrived',received_by_user_id=:uid,arrival_time=NOW() WHERE destination_id=:did AND destination_status='pending'")->execute([':uid'=>currentUserId(),':did'=>$destId]);
         logActivity($dest['visit_id'],'destination_confirmed',currentUserId(),$dest['office_id'],"{$dest['office_name']} confirmed {$dest['guest_name']}");
-        setFlash('success',"<strong>{$dest['guest_name']}</strong> arrival confirmed."); redirect(APP_URL.'/public/visits/view.php?id='.$dest['visit_id']);
-    }
-    if ($action==='start_service') {
-        $db->prepare("UPDATE visit_destinations SET destination_status='in_service' WHERE destination_id=:did AND destination_status IN('pending','arrived')")->execute([':did'=>$destId]);
-        logActivity($dest['visit_id'],'destination_confirmed',currentUserId(),$dest['office_id'],"{$dest['office_name']} started serving {$dest['guest_name']}");
-        setFlash('success',"Now serving <strong>{$dest['guest_name']}</strong>."); redirect(APP_URL.'/public/visits/view.php?id='.$dest['visit_id']);
+        setFlash('success',"<strong>{$dest['guest_name']}</strong> arrival confirmed.");
+        redirect(APP_URL.'/public/office/handle.php?dest_id='.$destId);
     }
     if ($action==='complete') {
         $notes = trim($_POST['completion_notes']??'');
-        $db->prepare("UPDATE visit_destinations SET destination_status='completed',completed_time=NOW(),notes=COALESCE(NULLIF(:notes,''),notes) WHERE destination_id=:did")->execute([':notes'=>$notes,':did'=>$destId]);
+        $db->prepare("UPDATE visit_destinations SET destination_status='completed',completed_time=NOW(),notes=COALESCE(NULLIF(:notes,''),notes) WHERE destination_id=:did AND destination_status IN('arrived','in_service')")->execute([':notes'=>$notes,':did'=>$destId]);
         logActivity($dest['visit_id'],'destination_completed',currentUserId(),$dest['office_id'],"{$dest['office_name']} completed {$dest['guest_name']}");
-        setFlash('success',"<strong>{$dest['guest_name']}</strong> completed at {$dest['office_name']}."); redirect(APP_URL.'/public/visits/view.php?id='.$dest['visit_id']);
+        setFlash('success',"<strong>{$dest['guest_name']}</strong> completed at {$dest['office_name']}.");
+        redirect(APP_URL.'/public/office/history.php');
     }
 }
 $status = $dest['destination_status'];
@@ -77,19 +74,17 @@ include __DIR__ . '/../../includes/header.php';
         <?= csrfField() ?>
         <input type="hidden" name="dest_id" value="<?= $destId ?>">
 
-        <?php if ($dest['requires_arrival_confirmation'] && $status==='pending'): ?>
+        <?php if ($status==='pending'): ?>
         <button type="submit" name="action" value="confirm_arrival" class="btn btn-accent w-100" style="justify-content:center;padding:12px;margin-bottom:10px;">
           <i data-lucide="user-check"></i> Confirm Guest Arrived
         </button>
+        <div class="info-box info" style="margin-top:12px;">
+          <i data-lucide="info"></i>
+          <div>After confirming arrival, this guest will move to Arrived Guests until you mark the office visit as completed.</div>
+        </div>
         <?php endif; ?>
 
-        <?php if (in_array($status, ['pending','arrived'])): ?>
-        <button type="submit" name="action" value="start_service" class="btn btn-primary w-100" style="justify-content:center;padding:12px;margin-bottom:10px;">
-          <i data-lucide="play"></i> Start Serving Guest
-        </button>
-        <?php endif; ?>
-
-        <?php if (in_array($status, ['pending','arrived','in_service'])): ?>
+        <?php if (in_array($status, ['arrived','in_service'], true)): ?>
         <div class="form-group" style="margin-top:12px;">
           <label class="form-label">Completion Notes (optional)</label>
           <textarea name="completion_notes" class="form-control" rows="2" placeholder="e.g. Documents submitted"></textarea>

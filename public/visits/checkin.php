@@ -53,7 +53,8 @@ if (isPost() && isset($_POST['confirm_checkin'])) {
     if ($toCheckIn['is_restricted']) { setFlash('error', 'This guest is restricted and cannot be checked in. Contact an administrator.'); redirect(APP_URL.'/public/visits/checkin.php'); }
     checkInVisit($db, $visitId, currentUserId());
     logActivity($visitId, 'check_in', currentUserId(), null, "Checked in '{$toCheckIn['guest_name']}'");
-    setFlash('success', "Guest <strong>{$toCheckIn['guest_name']}</strong> checked in successfully!");
+    $printUrl = APP_URL . '/public/visits/receipt.php?id=' . $visitId;
+    setFlash('success', "Guest <strong>" . e($toCheckIn['guest_name']) . "</strong> checked in successfully! <a href=\"{$printUrl}\" style=\"font-weight:800;color:inherit;text-decoration:underline;\">Print gate slip</a>");
     redirect(APP_URL.'/public/visits/view.php?id='.$visitId);
 }
 
@@ -108,7 +109,8 @@ if (isPost() && isset($_POST['create_known_checkin'])) {
 
             logActivity($newVisitId, 'walk_in_registration', currentUserId(), null, "Known guest '{$guestForCheckin['full_name']}' checked in from saved record: {$visitRef}");
             logActivity($newVisitId, 'check_in', currentUserId(), null, "Guard checked in known guest '{$guestForCheckin['full_name']}'");
-            setFlash('success', "Guest <strong>{$guestForCheckin['full_name']}</strong> checked in successfully! Reference: <strong>{$visitRef}</strong>");
+            $printUrl = APP_URL . '/public/visits/receipt.php?id=' . $newVisitId;
+            setFlash('success', "Guest <strong>" . e($guestForCheckin['full_name']) . "</strong> checked in successfully! Reference: <strong>" . e($visitRef) . "</strong>. <a href=\"{$printUrl}\" style=\"font-weight:800;color:inherit;text-decoration:underline;\">Print gate slip</a>");
             redirect(APP_URL . '/public/visits/view.php?id=' . $newVisitId);
         } catch (PDOException $e) {
             error_log('Known guest check-in error: ' . $e->getMessage());
