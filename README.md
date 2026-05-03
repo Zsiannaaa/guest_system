@@ -127,3 +127,9 @@ This codebase follows a pragmatic, feature-first PHP structure:
 - `public/` contains browser-accessible pages. These pages act as controllers and views.
 - `modules/` contains reusable model/query logic grouped by feature.
 - Some pages still contain inline SQL for page-specific workflows. Future cleanup can move those queries into the matching module folder.
+
+
+## contributions
+
+<img width="824" height="719" alt="Screenshot 2026-05-03 214417" src="https://github.com/user-attachments/assets/6166b182-ed58-49ef-b08e-dc97fd7e843f" />
+
