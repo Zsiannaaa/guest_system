@@ -17,6 +17,7 @@ This system supports the main visitor flow:
 - Vehicle entry recording.
 - Guest House expected guest and room management.
 - Reports and audit logs.
+<img width="1919" height="979" alt="Screenshot 2026-05-03 201047" src="https://github.com/user-attachments/assets/c4ddeef1-5cf5-458d-a238-3991f92cd63a" />
 
 ## Project Structure
 
