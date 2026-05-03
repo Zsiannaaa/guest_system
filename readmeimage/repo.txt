@@ -1,4 +1,7 @@
-<img src="https://raw.githubusercontent.com/Zsiannaaa/guest_system/main/readmeimage/readme.png" alt="README Banner" />
+https://github.com/Zsiannaaa/guest_system.git
+
+CODE:
+<img src="./readmeimage/readme.png" alt="README Banner" />
 
 # University Guest Monitoring System
 
