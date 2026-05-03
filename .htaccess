@@ -1,0 +1,22 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Keep direct access to existing files and directories.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Route all other requests to index.php.
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Basic hardening
+<FilesMatch "^(hostingcredentials\.txt|database\.sql|migration_gh\.sql)$">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "^\.(env|gitignore|htaccess)$">
+    Require all denied
+</FilesMatch>
