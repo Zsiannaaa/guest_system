@@ -1,3 +1,5 @@
+![README Banner](readmeimage/readme.png)
+
 # University Guest Monitoring System
 
 A PHP + MySQL web application for managing campus guests, visits, and Guest House accommodations at St. Paul University Dumaguete.
