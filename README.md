@@ -1,4 +1,5 @@
-<img src="https://raw.githubusercontent.com/Zsiannaaa/guest_system/main/readmeimage/readme.png" alt="README Banner" />
+<img width="620" height="134" alt="readimg" src="https://github.com/user-attachments/assets/6073c7dc-bbfc-47c6-af76-1d0f8c696f6e" />
+
 
 # University Guest Monitoring System
 
