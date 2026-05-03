@@ -1,4 +1,4 @@
-![README Banner](readmeimage/readme.png)
+<img src="./readmeimage/readme.png" alt="README Banner" />
 
 # University Guest Monitoring System
 
