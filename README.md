@@ -21,6 +21,9 @@ This system supports the main visitor flow:
 
 ## Project Structure
 
+<img width="1131" height="840" alt="Screenshot 2026-05-03 213220" src="https://github.com/user-attachments/assets/7b471355-cb4e-467e-88d2-8ebc5d898e1a" />
+
+
 ```text
 guest_system/
 |-- config/           # App constants and DB connection
