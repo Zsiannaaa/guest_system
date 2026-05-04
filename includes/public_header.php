@@ -37,7 +37,7 @@ $publicBackLabel = $publicBackLabel ?? 'Back to Home';
     <i data-lucide="arrow-left"></i> <?= htmlspecialchars($publicBackLabel) ?>
   </a>
   <?php else: ?>
-  <a href="#" class="help-link">
+  <a href="<?= APP_URL ?>/public/help/index.php?audience=guest" class="help-link">
     <i data-lucide="help-circle"></i> Need help?
   </a>
   <?php endif; ?>

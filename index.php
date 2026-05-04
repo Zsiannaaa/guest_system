@@ -50,7 +50,7 @@ include __DIR__ . '/includes/public_header.php';
         <div class="landing-kicker">Visitor access portal</div>
         <h1>Choose how you want to continue.</h1>
         <p class="landing-tagline">
-          Pre-register before arriving, sign in as authorized personnel, or check the current status of an existing visit.
+          Pre-register before arriving or sign in as authorized personnel managing campus visits.
         </p>
       </div>
 
@@ -88,13 +88,6 @@ include __DIR__ . '/includes/public_header.php';
 
       </div>
 
-      <a href="<?= APP_URL ?>/public/check_status.php" class="landing-status-card">
-        <span>
-          <i data-lucide="search"></i>
-          Check Visit Status
-        </span>
-        <i data-lucide="chevron-right"></i>
-      </a>
     </section>
 
   </div>

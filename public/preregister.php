@@ -207,7 +207,7 @@ include __DIR__ . '/../includes/public_header.php';
     </div>
 
     <div style="display:flex;gap:12px;justify-content:center;">
-      <a href="<?= APP_URL ?>/public/check_status.php?ref=<?= urlencode($success['reference']) ?>" class="btn btn-outline">
+      <a href="<?= APP_URL ?>/public/check_status.php?ref=<?= urlencode($success['qr_token']) ?>" class="btn btn-outline">
         <i data-lucide="search"></i> Check Status
       </a>
       <a href="<?= APP_URL ?>/" class="btn btn-primary">

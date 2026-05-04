@@ -74,7 +74,7 @@ $loginHasNotice = $error || isset($_GET['timeout']) || isset($_GET['logout']);
   <div class="login-nav">
     <a href="<?= APP_URL ?>/">Home</a>
     <span></span>
-    <a href="#" class="help-link">Need help?</a>
+    <a href="<?= APP_URL ?>/public/help/index.php?audience=staff" class="help-link">Need help?</a>
   </div>
 </div>
 
