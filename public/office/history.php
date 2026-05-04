@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Office staff page/controller for history visits and destinations. It connects office actions to visit destination records.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * office/history.php — Past visits to this office
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -7,12 +13,15 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/visits/destinations_module.php';
+// Study security: role-based access control blocks users from opening this page by URL unless their role is allowed.
 requireRole([ROLE_OFFICE_STAFF, ROLE_ADMIN]);
 $pageTitle = 'Visit History'; $db = getDB();
 $officeId = isAdmin() ? (int)($_GET['office'] ?? 0) : currentOfficeId();
 
+// Study query: Prepared SQL: reads rows from visit_destinations, guest_visits, guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $stmt = $db->prepare("SELECT vd.*, gv.visit_reference, gv.visit_date, gv.overall_status, g.full_name AS guest_name, g.organization FROM visit_destinations vd JOIN guest_visits gv ON vd.visit_id=gv.visit_id JOIN guests g ON gv.guest_id=g.guest_id WHERE vd.office_id=:oid AND vd.destination_status='completed' ORDER BY vd.completed_time DESC LIMIT 200");
 $stmt->execute([':oid'=>$officeId]); $visits = $stmt->fetchAll(); $total=count($visits);
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

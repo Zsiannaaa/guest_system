@@ -1,9 +1,16 @@
 <?php
+/**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Role dashboard page/controller for office users. It loads summary data then renders the dashboard view.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/dashboard/dashboard_module.php';
+// Study security: role-based access control blocks users from opening this page by URL unless their role is allowed.
 requireRole(ROLE_OFFICE_STAFF);
 $pageTitle = 'Office Dashboard';
 $db = getDB();
@@ -15,6 +22,7 @@ $doneToday = $stats['completed'];
 $incomingList = getOfficeIncomingList($db, $oid);
 $servingList = getOfficeServingList($db, $oid);
 
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

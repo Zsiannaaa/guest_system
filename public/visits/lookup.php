@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Visit page/controller for lookup. It coordinates request data, visit module functions, and the shared layout.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * visits/lookup.php — Quick visit lookup (all roles)
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -7,10 +13,12 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/visits/visits_module.php';
+// Study security: this page requires an active login before any private data is shown.
 requireLogin();
 $pageTitle = 'Visit Lookup'; $db = getDB();
 $q = trim($_GET['q'] ?? ''); $results = [];
 
+// Study query: SQL query: reads rows from guest_visits, guests for lookup, validation, or display.
 $stmt = $db->query("
     SELECT gv.visit_id, gv.visit_reference, gv.visit_date, gv.overall_status,
            gv.registration_type, gv.actual_check_in,
@@ -21,6 +29,7 @@ $stmt = $db->query("
     LIMIT 500
 ");
 $results = $stmt->fetchAll();
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

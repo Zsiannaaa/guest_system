@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Guest House page/controller for occupants. It connects forms and views to Guest House booking/room modules.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * public/guest_house/occupants.php — Current guest-house occupants
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -8,12 +14,14 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/guest_house/gh_bookings_module.php';
 
+// Study security: role-based access control blocks users from opening this page by URL unless their role is allowed.
 requireRole([ROLE_ADMIN, ROLE_GUEST_HOUSE_STAFF]);
 $pageTitle = 'Current Occupants';
 $db = getDB();
 
 $occupants = ghCurrentOccupants($db);
 
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

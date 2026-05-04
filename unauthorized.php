@@ -1,11 +1,18 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Access-denied page shown when a logged-in user tries to open a page outside their role.
+ * Flow: Entry file that connects visitors or staff to the rest of the system.
+ * Security: Keep access checks in the calling page and escape user-controlled output before displaying it.
+ */
+/**
  * unauthorized.php — Access Denied Page
  */
 require_once __DIR__ . '/config/constants.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
 $pageTitle = 'Access Denied';
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/includes/header.php';
 ?>
 

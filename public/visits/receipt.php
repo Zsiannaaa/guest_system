@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Visit page/controller for receipt. It coordinates request data, visit module functions, and the shared layout.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * visits/receipt.php - Printable gate slip for checked-in visitors.
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -8,10 +14,12 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/visits/visits_module.php';
 
+// Study security: this page requires an active login before any private data is shown.
 requireLogin();
 
 if (!isAdminOrGuard()) {
     setFlash('error', 'You do not have permission to print visitor gate slips.');
+    // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
     redirect(getDashboardUrl());
 }
 
@@ -21,11 +29,13 @@ $visit = getVisitDetails($db, $visitId);
 
 if (!$visit) {
     setFlash('error', 'Visit not found.');
+    // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
     redirect(getDashboardUrl());
 }
 
 if (isOfficeStaff() && !canOfficeViewVisit($db, $visitId, (int) currentOfficeId())) {
     setFlash('error', 'No permission.');
+    // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
     redirect(getDashboardUrl());
 }
 

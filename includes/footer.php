@@ -1,3 +1,11 @@
+<?php
+/**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Shared private/admin layout footer that closes the page shell and loads common scripts.
+ * Flow: Included after a page finishes rendering its main content.
+ * Security: Does not enforce access by itself; protected pages must run login/role checks before including it.
+ */
+?>
   </main><!-- /.page-content -->
 </div><!-- /.main-area -->
 </div><!-- /.app-wrapper -->

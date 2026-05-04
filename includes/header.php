@@ -1,12 +1,22 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Shared private/admin layout header and navigation used after a page has loaded its data.
+ * Flow: Included by public pages and modules to reuse common behavior across the system.
+ * Security: Keep access checks in the calling page and escape user-controlled output before displaying it.
+ */
+/**
  * includes/header.php — Sidebar + Topbar layout
  */
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/helpers.php';
+// Study security: this page requires an active login before any private data is shown.
 requireLogin();
 $flash = getFlash();
 $cur   = $_SERVER['REQUEST_URI'] ?? '';
+/**
+ * Study function: Supports the nav active workflow in this feature area.
+ */
 function navActive(string $path): string {
     global $cur;
     return (strpos($cur, $path) !== false) ? ' active' : '';

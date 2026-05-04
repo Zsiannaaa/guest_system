@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Central authentication, session, role access, and activity logging helper file.
+ * Flow: Included by public pages and modules to reuse common behavior across the system.
+ * Security: Implements login checks, role-based access control, session timeout, session fixation protection, and audit logs.
+ */
+/**
  * includes/auth.php
  * Session handling, authentication, RBAC, and security enforcement
  *
@@ -35,6 +41,9 @@ if (!headers_sent()) {
 // ─────────────────────────────────────────────────────────────
 // SESSION TIMEOUT CHECK
 // ─────────────────────────────────────────────────────────────
+/**
+ * Study function: Checks check session timeout rules before the workflow continues.
+ */
 function checkSessionTimeout(): void {
     if (in_array($_SESSION['user_role'] ?? '', [ROLE_GUARD, ROLE_OFFICE_STAFF], true)) {
         $_SESSION['last_activity'] = time();
@@ -45,6 +54,7 @@ function checkSessionTimeout(): void {
         $idle = time() - $_SESSION['last_activity'];
         if ($idle > SESSION_TIMEOUT) {
             sessionDestroy();
+            // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
             header('Location: ' . APP_URL . '/public/auth/login.php?timeout=1');
             exit;
         }
@@ -67,9 +77,14 @@ function isLoggedIn(): bool {
  * Require the user to be logged in.
  * Redirects to login page if not authenticated.
  */
+// Study security: this page requires an active login before any private data is shown.
+/**
+ * Study function: Checks require login rules before the workflow continues.
+ */
 function requireLogin(): void {
     checkSessionTimeout();
     if (!isLoggedIn()) {
+        // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
         header('Location: ' . APP_URL . '/public/auth/login.php');
         exit;
     }
@@ -81,14 +96,20 @@ function requireLogin(): void {
  *
  * @param string|array $roles Allowed role(s)
  */
+// Study security: role-based access control blocks users from opening this page by URL unless their role is allowed.
+/**
+ * Study function: Checks require role rules before the workflow continues.
+ */
 function requireRole(string|array $roles): void {
     requireLogin();
     $roles = (array) $roles;
     if (!in_array($_SESSION['user_role'], $roles, true)) {
         // Log the unauthorized access attempt
+        // Study audit: this records the important action in activity_logs for review and accountability.
         logActivity(null, 'other', currentUserId(), null,
             "Blocked access to " . ($_SERVER['REQUEST_URI'] ?? 'unknown') .
             " — Role: " . ($_SESSION['user_role'] ?? 'none'));
+        // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
         header('Location: ' . APP_URL . '/unauthorized.php');
         exit;
     }
@@ -100,12 +121,18 @@ function requireRole(string|array $roles): void {
  *
  * @param int $resourceOfficeId The office_id of the resource being accessed
  */
+// Study security: office staff can only work with records that belong to their assigned office.
+/**
+ * Study function: Checks require own office rules before the workflow continues.
+ */
 function requireOwnOffice(int $resourceOfficeId): void {
     if (isAdmin()) return; // Admins can access everything
     if (isOfficeStaff() && currentOfficeId() !== $resourceOfficeId) {
+        // Study audit: this records the important action in activity_logs for review and accountability.
         logActivity(null, 'other', currentUserId(), $resourceOfficeId,
             "Office staff tried to access office #{$resourceOfficeId} data");
         setFlash('error', 'You can only access data for your own office.');
+        // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
         redirect(getDashboardUrl());
     }
 }
@@ -122,6 +149,7 @@ function requireValidId(mixed $id, string $redirect): int {
     $id = (int) $id;
     if ($id <= 0) {
         setFlash('error', 'Invalid request.');
+        // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
         redirect($redirect);
     }
     return $id;
@@ -135,6 +163,7 @@ function attemptLogin(string $username, string $password): array|false {
     $db = getDB();
     $login = trim($username);
 
+    // Study query: Prepared SQL: reads rows from users, offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $db->prepare("
         SELECT u.*, o.office_name
         FROM users u
@@ -147,9 +176,11 @@ function attemptLogin(string $username, string $password): array|false {
     $user = $stmt->fetch();
 
     if (!$user) return false;
+    // Study security: password_verify compares the typed password with the stored hash without exposing the real password.
     if (!password_verify($password, $user['password_hash'])) return false;
 
     // Update last login timestamp
+    // Study query: Prepared SQL: updates existing row(s) in USERS. Placeholders keep user/form values separate from the SQL text.
     $db->prepare("UPDATE users SET last_login = NOW() WHERE user_id = :id")
        ->execute([':id' => $user['user_id']]);
 
@@ -161,6 +192,7 @@ function attemptLogin(string $username, string $password): array|false {
  */
 function createUserSession(array $user): void {
     // Regenerate session ID to prevent session fixation
+    // Study security: regenerating the session ID prevents session fixation after login.
     session_regenerate_id(true);
 
     $_SESSION['user_id']       = $user['user_id'];
@@ -196,9 +228,11 @@ function sessionDestroy(): void {
  */
 function logout(): void {
     if (isLoggedIn()) {
+        // Study audit: this records the important action in activity_logs for review and accountability.
         logActivity(null, 'user_logout', $_SESSION['user_id'], null, 'User logged out');
     }
     sessionDestroy();
+    // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
     header('Location: ' . APP_URL . '/public/auth/login.php?logout=1');
     exit;
 }
@@ -207,34 +241,58 @@ function logout(): void {
 // ROLE HELPER FUNCTIONS
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Study function: Returns true when the logged-in user has the admin role.
+ */
 function isAdmin(): bool {
     return isLoggedIn() && $_SESSION['user_role'] === ROLE_ADMIN;
 }
 
+/**
+ * Study function: Returns true when the logged-in user has the guard role.
+ */
 function isGuard(): bool {
     return isLoggedIn() && $_SESSION['user_role'] === ROLE_GUARD;
 }
 
+/**
+ * Study function: Returns true when the logged-in user belongs to office staff.
+ */
 function isOfficeStaff(): bool {
     return isLoggedIn() && $_SESSION['user_role'] === ROLE_OFFICE_STAFF;
 }
 
+/**
+ * Study function: Returns true when the logged-in user belongs to Guest House staff.
+ */
 function isGuestHouseStaff(): bool {
     return isLoggedIn() && $_SESSION['user_role'] === ROLE_GUEST_HOUSE_STAFF;
 }
 
+/**
+ * Study function: Returns true for users allowed to manage Guest House workflows.
+ */
 function isGuestHouseManager(): bool {
     return isAdmin() || isGuestHouseStaff();
 }
 
+/**
+ * Study function: Returns true for users allowed to perform admin-or-guard actions.
+ */
 function isAdminOrGuard(): bool {
     return isAdmin() || isGuard();
 }
 
+/**
+ * Study function: Returns the logged-in user ID stored in the session.
+ */
 function currentUserId(): ?int {
     return $_SESSION['user_id'] ?? null;
 }
 
+/**
+ * Study function: Returns a small array describing the logged-in user from the session.
+ */
 function currentUser(): array {
     return [
         'user_id'   => $_SESSION['user_id'] ?? null,
@@ -244,14 +302,23 @@ function currentUser(): array {
     ];
 }
 
+/**
+ * Study function: Returns the logged-in user name stored in the session.
+ */
 function currentUserName(): string {
     return $_SESSION['user_name'] ?? 'Unknown';
 }
 
+/**
+ * Study function: Returns the logged-in user role stored in the session.
+ */
 function currentUserRole(): string {
     return $_SESSION['user_role'] ?? '';
 }
 
+/**
+ * Study function: Returns the office ID assigned to the logged-in user, if any.
+ */
 function currentOfficeId(): ?int {
     return $_SESSION['office_id'] ?? null;
 }
@@ -276,6 +343,10 @@ function getDashboardUrl(): string {
 /**
  * Insert a record into activity_logs.
  */
+// Study audit: this records the important action in activity_logs for review and accountability.
+/**
+ * Study function: Writes log activity information to the audit trail.
+ */
 function logActivity(
     ?int $visitId,
     string $actionType,
@@ -286,6 +357,7 @@ function logActivity(
     try {
         $db   = getDB();
         $ip   = $_SERVER['REMOTE_ADDR'] ?? null;
+        // Study query: Prepared SQL: creates a new row in ACTIVITY_LOGS. Placeholders keep user/form values separate from the SQL text.
         $stmt = $db->prepare("
             INSERT INTO activity_logs
                 (visit_id, action_type, performed_by_user_id, office_id, description, ip_address)

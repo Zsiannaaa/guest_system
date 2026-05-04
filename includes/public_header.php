@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Shared public-facing page header for pages that guests can open without logging in.
+ * Flow: Included by public pages and modules to reuse common behavior across the system.
+ * Security: Keep access checks in the calling page and escape user-controlled output before displaying it.
+ */
+/**
  * Public page shell header.
  * Used by the landing page, guest pre-registration, and status checker.
  */
@@ -31,7 +37,7 @@ $publicBackLabel = $publicBackLabel ?? 'Back to Home';
     <i data-lucide="arrow-left"></i> <?= htmlspecialchars($publicBackLabel) ?>
   </a>
   <?php else: ?>
-  <a href="#" class="help-link">
+  <a href="<?= APP_URL ?>/public/help/index.php?audience=guest" class="help-link">
     <i data-lucide="help-circle"></i> Need help?
   </a>
   <?php endif; ?>

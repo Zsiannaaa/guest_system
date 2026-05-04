@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Visit page/controller for view. It coordinates request data, visit module functions, and the shared layout.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * visits/view.php — Visit Detail View
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -7,38 +13,49 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/visits/visits_module.php';
+// Study security: this page requires an active login before any private data is shown.
 requireLogin();
 $pageTitle = 'Visit Details'; $db = getDB();
 $visitId = (int)($_GET['id'] ?? 0);
+// Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
 if (!$visitId) { setFlash('error','Invalid visit ID.'); redirect(getDashboardUrl()); }
 
+// Study query: Prepared SQL: reads rows from guest_visits, guests, users for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $stmt = $db->prepare("SELECT gv.*, g.full_name AS guest_name, g.contact_number, g.email, g.organization, g.id_type, g.is_restricted, u.full_name AS guard_name FROM guest_visits gv JOIN guests g ON gv.guest_id=g.guest_id LEFT JOIN users u ON gv.processed_by_guard_id=u.user_id WHERE gv.visit_id=:vid");
 $stmt->execute([':vid'=>$visitId]); $visit = $stmt->fetch();
+// Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
 if (!$visit) { setFlash('error','Visit not found.'); redirect(getDashboardUrl()); }
 
 if (isOfficeStaff()) {
+    // Study query: Prepared SQL: reads rows from visit_destinations for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $chk = $db->prepare("SELECT 1 FROM visit_destinations WHERE visit_id=:vid AND office_id=:oid");
     $chk->execute([':vid'=>$visitId,':oid'=>currentOfficeId()]);
+    // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
     if (!$chk->fetchColumn()) { setFlash('error','No permission.'); redirect(getDashboardUrl()); }
 }
 
 $officeScopedView = isOfficeStaff() && !isAdmin();
 if ($officeScopedView) {
+    // Study query: Prepared SQL: reads rows from visit_destinations, offices, users for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $destStmt = $db->prepare("SELECT vd.*, o.office_name, u.full_name AS received_by_name FROM visit_destinations vd JOIN offices o ON vd.office_id=o.office_id LEFT JOIN users u ON vd.received_by_user_id=u.user_id WHERE vd.visit_id=:vid AND vd.office_id=:oid ORDER BY vd.sequence_no");
     $destStmt->execute([':vid'=>$visitId, ':oid'=>currentOfficeId()]);
 } else {
+    // Study query: Prepared SQL: reads rows from visit_destinations, offices, users for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $destStmt = $db->prepare("SELECT vd.*, o.office_name, u.full_name AS received_by_name FROM visit_destinations vd JOIN offices o ON vd.office_id=o.office_id LEFT JOIN users u ON vd.received_by_user_id=u.user_id WHERE vd.visit_id=:vid ORDER BY vd.sequence_no");
     $destStmt->execute([':vid'=>$visitId]);
 }
 $destinations = $destStmt->fetchAll();
 
+// Study query: Prepared SQL: reads rows from vehicle_entries for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $vehStmt = $db->prepare("SELECT * FROM vehicle_entries WHERE visit_id=:vid");
 $vehStmt->execute([':vid'=>$visitId]); $vehicle = $vehStmt->fetch();
 
 if ($officeScopedView) {
+    // Study query: Prepared SQL: reads rows from activity_logs, users for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $logStmt = $db->prepare("SELECT al.*, u.full_name AS actor_name FROM activity_logs al LEFT JOIN users u ON al.performed_by_user_id=u.user_id WHERE al.visit_id=:vid AND al.office_id=:oid ORDER BY al.logged_at ASC");
     $logStmt->execute([':vid'=>$visitId, ':oid'=>currentOfficeId()]);
 } else {
+    // Study query: Prepared SQL: reads rows from activity_logs, users for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $logStmt = $db->prepare("SELECT al.*, u.full_name AS actor_name FROM activity_logs al LEFT JOIN users u ON al.performed_by_user_id=u.user_id WHERE al.visit_id=:vid ORDER BY al.logged_at ASC");
     $logStmt->execute([':vid'=>$visitId]);
 }
@@ -46,6 +63,7 @@ $logs = $logStmt->fetchAll();
 
 $sc = match($visit['overall_status']) { 'pending'=>'badge-warning','checked_in'=>'badge-success','checked_out'=>'badge-secondary','cancelled'=>'badge-danger','overstayed'=>'badge-danger',default=>'badge-secondary' };
 
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

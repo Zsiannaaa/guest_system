@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Reports data-access module for filtered visit reports and summary statistics.
+ * Flow: Called by browser pages in public/; returns data or performs database changes, then the page renders the result.
+ * Security: These functions expect validated inputs from controllers and use prepared statements for database values.
+ */
+/**
  * modules/reports/reports_module.php — Report Model
  *
  * Contains ALL database logic for reports.
@@ -25,6 +31,7 @@ function getReportSummary(PDO $pdo, string $from, string $to): array {
  * Visits per day for a date range.
  */
 function getVisitsPerDay(PDO $pdo, string $from, string $to): array {
+    // Study query: Prepared SQL: reads rows from guest_visits, AND for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT visit_date, COUNT(*) AS total,
                SUM(registration_type='walk_in') AS walk_ins,
@@ -41,6 +48,7 @@ function getVisitsPerDay(PDO $pdo, string $from, string $to): array {
  * Visits per office for a date range.
  */
 function getVisitsPerOffice(PDO $pdo, string $from, string $to): array {
+    // Study query: Prepared SQL: reads rows from visit_destinations, offices, guest_visits, AND for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT o.office_name, COUNT(vd.destination_id) AS total, SUM(vd.is_unplanned) AS unplanned
         FROM visit_destinations vd
@@ -57,6 +65,7 @@ function getVisitsPerOffice(PDO $pdo, string $from, string $to): array {
  * Status breakdown for a date range.
  */
 function getStatusBreakdown(PDO $pdo, string $from, string $to): array {
+    // Study query: Prepared SQL: reads rows from guest_visits, AND for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT overall_status, COUNT(*) AS cnt
         FROM guest_visits
@@ -71,6 +80,7 @@ function getStatusBreakdown(PDO $pdo, string $from, string $to): array {
  * Full guest visit log for a date range.
  */
 function getGuestVisitLog(PDO $pdo, string $from, string $to): array {
+    // Study query: Prepared SQL: reads rows from guest_visits, guests, AND for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT gv.visit_reference, gv.visit_date, gv.overall_status,
                gv.registration_type, gv.actual_check_in, gv.actual_check_out,

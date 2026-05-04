@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Public status lookup page where a guest can check a submitted visit reference.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * public/check_status.php - Guest Visit Status Checker (No login)
  */
 require_once __DIR__ . '/../config/db.php';
@@ -8,11 +14,13 @@ require_once __DIR__ . '/../includes/helpers.php';
 
 $db = getDB();
 $result = null;
+$lookupError = '';
 $ref = trim($_GET['ref'] ?? $_POST['ref'] ?? '');
 $lookupMode = str_starts_with(strtoupper($ref), 'QR-') ? 'qr' : 'reference';
 
 if ($ref !== '') {
     if ($lookupMode === 'qr') {
+        // Study query: Prepared SQL: reads rows from guest_visits, guests, visit_destinations, offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
         $stmt = $db->prepare("
             SELECT gv.visit_reference, gv.visit_date, gv.overall_status, gv.registration_type,
                    gv.actual_check_in, gv.actual_check_out, gv.purpose_of_visit,
@@ -27,17 +35,10 @@ if ($ref !== '') {
             LIMIT 1
         ");
         $stmt->execute([':qr_token' => $ref]);
+        $result = $stmt->fetch();
     } else {
-        $stmt = $db->prepare("
-            SELECT visit_reference, visit_date, overall_status, registration_type
-            FROM guest_visits
-            WHERE visit_reference = :visit_ref
-            LIMIT 1
-        ");
-        $stmt->execute([':visit_ref' => $ref]);
+        $lookupError = 'For privacy, public status lookup now requires the visit QR token. Reference numbers are verified only by guards or authorized staff.';
     }
-
-    $result = $stmt->fetch();
 }
 
 $publicPageTitle = 'Check Visit Status - ' . APP_NAME;
@@ -54,14 +55,14 @@ include __DIR__ . '/../includes/public_header.php';
       <i data-lucide="search" style="width:26px;height:26px;color:var(--accent);"></i>
     </div>
     <div class="page-title">Check Visit Status</div>
-    <p style="color:var(--text-s);font-size:.9rem;margin-top:4px;">Enter your reference number or QR token to check your visit status.</p>
+    <p style="color:var(--text-s);font-size:.9rem;margin-top:4px;">Enter the QR token from your visit confirmation to check your status.</p>
   </div>
 
   <form method="GET" class="card" style="margin-bottom:20px;">
     <div class="card-body">
       <div class="input-icon-wrap" style="margin-bottom:12px;">
         <i data-lucide="hash" class="input-icon"></i>
-        <input type="text" name="ref" class="form-control" placeholder="e.g. GST-20260424-0001 or QR token" value="<?= e($ref) ?>" required autofocus style="font-size:1rem;padding:12px 12px 12px 38px;font-weight:600;">
+        <input type="text" name="ref" class="form-control" placeholder="e.g. QR-A1B2C3D4E5F6A7B8" value="<?= e($ref) ?>" required autofocus style="font-size:1rem;padding:12px 12px 12px 38px;font-weight:600;">
       </div>
       <button type="submit" class="btn btn-primary w-100" style="justify-content:center;padding:11px;">
         <i data-lucide="search"></i> Look Up
@@ -69,16 +70,20 @@ include __DIR__ . '/../includes/public_header.php';
     </div>
   </form>
 
-  <?php if ($ref !== '' && !$result): ?>
+  <?php if ($lookupError): ?>
+  <div class="info-box warning">
+    <i data-lucide="shield-alert"></i>
+    <div><?= e($lookupError) ?></div>
+  </div>
+  <?php elseif ($ref !== '' && !$result): ?>
   <div class="info-box danger">
     <i data-lucide="alert-circle"></i>
-    <div>No visit found with that reference number or QR token. Please check and try again.</div>
+    <div>No visit found with that QR token. Please check and try again.</div>
   </div>
   <?php endif; ?>
 
   <?php if ($result): ?>
   <?php
-    $hasFullDetails = $lookupMode === 'qr';
     $sc = match($result['overall_status']) {
       'pending' => 'badge-warning',
       'checked_in' => 'badge-success',
@@ -101,17 +106,14 @@ include __DIR__ . '/../includes/public_header.php';
           <dt>Reference</dt>
           <dd><span class="ref-chip" style="font-size:.85rem;"><?= e($result['visit_reference']) ?></span></dd>
         </div>
-        <?php if ($hasFullDetails): ?>
         <div class="detail-row">
           <dt>Guest Name</dt>
           <dd><?= e($result['full_name']) ?></dd>
         </div>
-        <?php endif; ?>
         <div class="detail-row">
           <dt>Visit Date</dt>
           <dd><?= formatDate($result['visit_date']) ?></dd>
         </div>
-        <?php if ($hasFullDetails): ?>
         <div class="detail-row">
           <dt>Purpose</dt>
           <dd style="max-width:240px;text-align:right;"><?= e($result['purpose_of_visit']) ?></dd>
@@ -130,12 +132,6 @@ include __DIR__ . '/../includes/public_header.php';
         <div class="detail-row">
           <dt>Checked Out</dt>
           <dd><?= formatDateTime($result['actual_check_out']) ?></dd>
-        </div>
-        <?php endif; ?>
-        <?php else: ?>
-        <div class="info-box info" style="margin-top:14px;">
-          <i data-lucide="shield"></i>
-          <div>For privacy, reference lookup only shows basic status. Full details are available through the visit QR token or staff verification.</div>
         </div>
         <?php endif; ?>
       </dl>

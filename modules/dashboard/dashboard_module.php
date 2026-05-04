@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Dashboard data-access module that gathers counts and recent activity for role-specific dashboards.
+ * Flow: Called by browser pages in public/; returns data or performs database changes, then the page renders the result.
+ * Security: These functions expect validated inputs from controllers and use prepared statements for database values.
+ */
+/**
  * modules/dashboard/dashboard_module.php — Dashboard Model
  *
  * Contains ALL database logic for dashboard stats and widgets.
@@ -30,6 +36,7 @@ function getAdminDashboardStats(PDO $pdo): array {
  */
 function getActiveVisitorsForDashboard(PDO $pdo, int $limit = 5, bool $includeRestricted = false): array {
     $restrictedSelect = $includeRestricted ? ', g.is_restricted' : '';
+    // Study query: Prepared SQL: reads rows from guest_visits, guests, visit_destinations, offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT gv.visit_id, gv.visit_reference, gv.actual_check_in, gv.registration_type,
                g.full_name AS guest_name{$restrictedSelect},
@@ -53,6 +60,7 @@ function getActiveVisitorsForDashboard(PDO $pdo, int $limit = 5, bool $includeRe
  * Fetch recent visit registrations for dashboard widget.
  */
 function getRecentVisitsForDashboard(PDO $pdo, int $limit = 5): array {
+    // Study query: Prepared SQL: reads rows from guest_visits, guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT gv.visit_id, gv.visit_reference, gv.registration_type, gv.overall_status,
                gv.actual_check_in, gv.purpose_of_visit,
@@ -77,6 +85,7 @@ function getVisitorsByOfficeToday(PDO $pdo): array {
  * Fetch visitors by office for a specific date.
  */
 function getVisitorsByOfficeForDate(PDO $pdo, string $date): array {
+    // Study query: Prepared SQL: reads rows from visit_destinations, offices, guest_visits for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT o.office_name, COUNT(vd.destination_id) AS total
         FROM visit_destinations vd
@@ -89,7 +98,11 @@ function getVisitorsByOfficeForDate(PDO $pdo, string $date): array {
     return $stmt->fetchAll();
 }
 
+/**
+ * Study function: Loads get latest visit date records for the page/controller.
+ */
 function getLatestVisitDate(PDO $pdo): ?string {
+    // Study query: SQL query: reads rows from guest_visits for lookup, validation, or display.
     $date = $pdo->query("SELECT MAX(visit_date) FROM guest_visits")->fetchColumn();
     return $date ?: null;
 }
@@ -108,7 +121,11 @@ function getGuardDashboardStats(PDO $pdo): array {
     ];
 }
 
+/**
+ * Study function: Loads get pending arrivals for guard records for the page/controller.
+ */
 function getPendingArrivalsForGuard(PDO $pdo, string $date, int $limit = 5): array {
+    // Study query: Prepared SQL: reads rows from guest_visits, guests, visit_destinations, offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT gv.visit_id, gv.visit_reference, gv.visit_date, gv.expected_time_in,
                g.full_name AS guest_name,
@@ -140,7 +157,11 @@ function getOfficeDashboardStats(PDO $pdo, int $officeId): array {
     ];
 }
 
+/**
+ * Study function: Loads get office incoming list records for the page/controller.
+ */
 function getOfficeIncomingList(PDO $pdo, int $officeId, int $limit = 8): array {
+    // Study query: Prepared SQL: reads rows from visit_destinations, guest_visits, guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT vd.destination_id, vd.is_unplanned, gv.visit_id, gv.visit_reference,
                gv.purpose_of_visit, gv.actual_check_in, gv.registration_type,
@@ -158,7 +179,11 @@ function getOfficeIncomingList(PDO $pdo, int $officeId, int $limit = 8): array {
     return $stmt->fetchAll();
 }
 
+/**
+ * Study function: Loads get office serving list records for the page/controller.
+ */
 function getOfficeServingList(PDO $pdo, int $officeId, int $limit = 5): array {
+    // Study query: Prepared SQL: reads rows from visit_destinations, guest_visits, guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT vd.destination_id, vd.destination_status, gv.visit_id, gv.visit_reference,
                vd.arrival_time, g.full_name AS guest_name, g.organization
@@ -179,6 +204,7 @@ function getOfficeServingList(PDO $pdo, int $officeId, int $limit = 5): array {
  * Fetch activity logs (with optional limit).
  */
 function getActivityLogs(PDO $pdo, int $limit = 200): array {
+    // Study query: Prepared SQL: reads rows from activity_logs, users, offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT al.*, u.full_name AS actor_name, o.office_name
         FROM activity_logs al

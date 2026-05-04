@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Guest House data-access module for gh bookings module. Guest House public pages call these functions for rooms, bookings, and reports.
+ * Flow: Called by browser pages in public/; returns data or performs database changes, then the page renders the result.
+ * Security: These functions expect validated inputs from controllers and use prepared statements for database values.
+ */
+/**
  * modules/guest_house/gh_bookings_module.php — Guest House Bookings Model
  *
  * Pure DB logic. No HTML, no session checks.
@@ -15,6 +21,7 @@ function ghGenerateBookingReference(PDO $pdo): string {
     $today  = date('Ymd');
     $prefix = GH_BOOKING_REF_PREFIX . '-' . $today . '-';
 
+    // Study query: Prepared SQL: reads rows from guest_house_bookings for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT booking_reference FROM guest_house_bookings
         WHERE booking_reference LIKE :p
@@ -38,6 +45,7 @@ function ghFindOrCreateGuest(PDO $pdo, string $name, ?string $organization, ?str
 
     if ($name === '') return ['Guest name is required.', 0];
 
+    // Study query: Prepared SQL: reads rows from guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT guest_id, is_restricted
         FROM guests
@@ -62,6 +70,7 @@ function ghFindOrCreateGuest(PDO $pdo, string $name, ?string $organization, ?str
         if ((int)$guest['is_restricted'] === 1) {
             return ['This guest is restricted and cannot be added to the Guest House list.', 0];
         }
+        // Study query: Prepared SQL: updates existing row(s) in GUESTS. Placeholders keep user/form values separate from the SQL text.
         $pdo->prepare("
             UPDATE guests
             SET organization = COALESCE(NULLIF(:org, ''), organization),
@@ -71,6 +80,7 @@ function ghFindOrCreateGuest(PDO $pdo, string $name, ?string $organization, ?str
         return [null, (int)$guest['guest_id']];
     }
 
+    // Study query: Prepared SQL: creates a new row in GUESTS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         INSERT INTO guests (full_name, contact_number, organization, id_type)
         VALUES (:name, :contact, :org, 'Verified at arrival')
@@ -116,12 +126,17 @@ function ghListBookings(PDO $pdo, array $filters = []): array {
         WHERE " . implode(' AND ', $where) . "
         ORDER BY b.check_in_date DESC, b.booking_id DESC
     ";
+    // Study query: Prepared SQL: runs database work for this step. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return $stmt->fetchAll();
 }
 
+/**
+ * Study function: Supports the guest house get booking workflow in this feature area.
+ */
 function ghGetBooking(PDO $pdo, int $id): array|false {
+    // Study query: Prepared SQL: reads rows from guest_house_bookings, guests, guest_house_rooms, gh_room_types, users, guest_visits for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT b.*,
                g.full_name AS guest_name, g.organization, g.contact_number,
@@ -168,6 +183,7 @@ function ghCreateBooking(PDO $pdo, array $data, int $actorUserId): array {
     if ($purpose === '') $purpose = 'Guest House accommodation';
 
     // Restricted guest guard
+    // Study query: Prepared SQL: reads rows from guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $rstmt = $pdo->prepare("SELECT is_restricted, full_name FROM guests WHERE guest_id = :g");
     $rstmt->execute([':g' => $guestId]);
     $grow = $rstmt->fetch();
@@ -178,6 +194,7 @@ function ghCreateBooking(PDO $pdo, array $data, int $actorUserId): array {
 
     // Capacity check
     if ($roomId) {
+        // Study query: SQL query: reads rows from guest_house_rooms for lookup, validation, or display. Values are cast before being placed in this direct SQL string.
         $cap = (int)$pdo->query("SELECT capacity FROM guest_house_rooms WHERE room_id = " . (int)$roomId)->fetchColumn();
         if ($cap > 0 && $numGuests > $cap) {
             return ["Number of guests ({$numGuests}) exceeds room capacity ({$cap}).", 0, ''];
@@ -190,6 +207,7 @@ function ghCreateBooking(PDO $pdo, array $data, int $actorUserId): array {
 
     $ref = ghGenerateBookingReference($pdo);
 
+    // Study query: Prepared SQL: creates a new row in GUEST_HOUSE_BOOKINGS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         INSERT INTO guest_house_bookings (
             booking_reference, guest_id, room_id, check_in_date, check_out_date,
@@ -208,12 +226,16 @@ function ghCreateBooking(PDO $pdo, array $data, int $actorUserId): array {
     ]);
     $bookingId = (int)$pdo->lastInsertId();
 
+    // Study audit: this records the important action in activity_logs for review and accountability.
     logActivity(null, 'gh_booking_created', $actorUserId, null,
         "Created GH booking {$ref} for guest_id {$guestId}, room_id " . ($roomId ?? 'unassigned'));
 
     return [null, $bookingId, $ref];
 }
 
+/**
+ * Study function: Supports the guest house update booking workflow in this feature area.
+ */
 function ghUpdateBooking(PDO $pdo, int $id, array $data, int $actorUserId): ?string {
     $cur = ghGetBooking($pdo, $id);
     if (!$cur) return 'Booking not found.';
@@ -240,6 +262,7 @@ function ghUpdateBooking(PDO $pdo, int $id, array $data, int $actorUserId): ?str
     if ($purpose === '') $purpose = 'Guest House accommodation';
 
     if ($roomId) {
+        // Study query: SQL query: reads rows from guest_house_rooms for lookup, validation, or display. Values are cast before being placed in this direct SQL string.
         $cap = (int)$pdo->query("SELECT capacity FROM guest_house_rooms WHERE room_id = " . (int)$roomId)->fetchColumn();
         if ($cap > 0 && $numGuests > $cap) {
             return "Number of guests ({$numGuests}) exceeds room capacity ({$cap}).";
@@ -249,6 +272,7 @@ function ghUpdateBooking(PDO $pdo, int $id, array $data, int $actorUserId): ?str
         }
     }
 
+    // Study query: Prepared SQL: updates existing row(s) in GUESTS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         UPDATE guests
         SET full_name=:guest_name, organization=:org, contact_number=:contact
@@ -260,6 +284,7 @@ function ghUpdateBooking(PDO $pdo, int $id, array $data, int $actorUserId): ?str
         ':guest_id' => $cur['guest_id'],
     ]);
 
+    // Study query: Prepared SQL: updates existing row(s) in GUEST_HOUSE_BOOKINGS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         UPDATE guest_house_bookings SET
             room_id=:rid, check_in_date=:from, check_out_date=:to,
@@ -272,11 +297,15 @@ function ghUpdateBooking(PDO $pdo, int $id, array $data, int $actorUserId): ?str
         ':num'=>$numGuests, ':notes'=>$notes ?: null, ':id'=>$id,
     ]);
 
+    // Study audit: this records the important action in activity_logs for review and accountability.
     logActivity(null, 'gh_booking_updated', $actorUserId, null,
         "Updated GH booking {$cur['booking_reference']}");
     return null;
 }
 
+/**
+ * Study function: Cancels a Guest House booking and records the reason.
+ */
 function ghCancelBooking(PDO $pdo, int $id, string $reason, int $actorUserId): ?string {
     $cur = ghGetBooking($pdo, $id);
     if (!$cur) return 'Booking not found.';
@@ -284,6 +313,7 @@ function ghCancelBooking(PDO $pdo, int $id, string $reason, int $actorUserId): ?
         return 'This booking is already closed.';
     }
 
+    // Study query: Prepared SQL: updates existing row(s) in GUEST_HOUSE_BOOKINGS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         UPDATE guest_house_bookings
         SET status='cancelled',
@@ -298,39 +328,51 @@ function ghCancelBooking(PDO $pdo, int $id, string $reason, int $actorUserId): ?
         ghSyncRoomStatus($pdo, (int)$cur['room_id']);
     }
 
+    // Study audit: this records the important action in activity_logs for review and accountability.
     logActivity(null, 'gh_booking_cancelled', $actorUserId, null,
         "Cancelled GH booking {$cur['booking_reference']}: " . ($reason ?: 'n/a'));
     return null;
 }
 
+/**
+ * Study function: Marks a Guest House booking as arrived and updates the assigned room status.
+ */
 function ghCheckIn(PDO $pdo, int $bookingId, int $actorUserId): ?string {
     $cur = ghGetBooking($pdo, $bookingId);
     if (!$cur) return 'Booking not found.';
     if ($cur['status'] !== 'reserved') return 'Only expected guests can be marked as arrived.';
     if (empty($cur['room_id']))        return 'Assign a room before marking this guest as arrived.';
 
+    // Study transaction: several related database changes must succeed together or be rolled back together.
     $pdo->beginTransaction();
     try {
+        // Study query: Prepared SQL: updates existing row(s) in GUEST_HOUSE_BOOKINGS. Placeholders keep user/form values separate from the SQL text.
         $pdo->prepare("
             UPDATE guest_house_bookings
             SET status='checked_in', actual_check_in = NOW()
             WHERE booking_id = :id
         ")->execute([':id' => $bookingId]);
 
+        // Study query: Prepared SQL: updates existing row(s) in GUEST_HOUSE_ROOMS. Placeholders keep user/form values separate from the SQL text.
         $pdo->prepare("UPDATE guest_house_rooms SET status='occupied' WHERE room_id = :rid")
             ->execute([':rid' => $cur['room_id']]);
 
+        // Study transaction: commit saves all database changes made since beginTransaction().
         $pdo->commit();
     } catch (Throwable $e) {
         $pdo->rollBack();
         return 'Failed to check in: ' . $e->getMessage();
     }
 
+    // Study audit: this records the important action in activity_logs for review and accountability.
     logActivity(null, 'gh_checked_in', $actorUserId, null,
         "GH arrival: {$cur['booking_reference']} (room {$cur['room_number']})");
     return null;
 }
 
+/**
+ * Study function: Marks a Guest House booking as left and frees the room when appropriate.
+ */
 function ghCheckOut(PDO $pdo, int $bookingId, int $actorUserId, ?string $notes = null): ?string {
     $cur = ghGetBooking($pdo, $bookingId);
     if (!$cur) return 'Booking not found.';
@@ -338,8 +380,10 @@ function ghCheckOut(PDO $pdo, int $bookingId, int $actorUserId, ?string $notes =
         return 'Only arrived guests can be marked as left.';
     }
 
+    // Study transaction: several related database changes must succeed together or be rolled back together.
     $pdo->beginTransaction();
     try {
+        // Study query: Prepared SQL: updates existing row(s) in GUEST_HOUSE_BOOKINGS. Placeholders keep user/form values separate from the SQL text.
         $pdo->prepare("
             UPDATE guest_house_bookings
             SET status='checked_out', actual_check_out = NOW(),
@@ -350,12 +394,14 @@ function ghCheckOut(PDO $pdo, int $bookingId, int $actorUserId, ?string $notes =
         if (!empty($cur['room_id'])) {
             ghSyncRoomStatus($pdo, (int)$cur['room_id']);
         }
+        // Study transaction: commit saves all database changes made since beginTransaction().
         $pdo->commit();
     } catch (Throwable $e) {
         $pdo->rollBack();
         return 'Failed to check out: ' . $e->getMessage();
     }
 
+    // Study audit: this records the important action in activity_logs for review and accountability.
     logActivity(null, 'gh_checked_out', $actorUserId, null,
         "GH departure: {$cur['booking_reference']} (room {$cur['room_number']})");
     return null;
@@ -365,6 +411,7 @@ function ghCheckOut(PDO $pdo, int $bookingId, int $actorUserId, ?string $notes =
  * Re-evaluate physical room status based on whether any booking still holds it.
  */
 function ghSyncRoomStatus(PDO $pdo, int $roomId): void {
+    // Study query: Prepared SQL: reads rows from guest_house_bookings for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT COUNT(*) FROM guest_house_bookings
         WHERE room_id = :rid AND status IN ('checked_in','occupied')
@@ -372,6 +419,7 @@ function ghSyncRoomStatus(PDO $pdo, int $roomId): void {
     $stmt->execute([':rid' => $roomId]);
     $hasActive = (int)$stmt->fetchColumn() > 0;
 
+    // Study query: Prepared SQL: reads rows from guest_house_rooms for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $current = $pdo->prepare("SELECT status FROM guest_house_rooms WHERE room_id = :rid");
     $current->execute([':rid' => $roomId]);
     $cur = $current->fetchColumn();
@@ -380,6 +428,7 @@ function ghSyncRoomStatus(PDO $pdo, int $roomId): void {
 
     $new = $hasActive ? 'occupied' : 'available';
     if ($cur !== $new) {
+        // Study query: Prepared SQL: updates existing row(s) in GUEST_HOUSE_ROOMS. Placeholders keep user/form values separate from the SQL text.
         $pdo->prepare("UPDATE guest_house_rooms SET status = :s WHERE room_id = :rid")
             ->execute([':s' => $new, ':rid' => $roomId]);
     }
@@ -389,6 +438,7 @@ function ghSyncRoomStatus(PDO $pdo, int $roomId): void {
  * All current occupants (status in checked_in/occupied).
  */
 function ghCurrentOccupants(PDO $pdo): array {
+    // Study query: SQL query: reads rows from the database for lookup, validation, or display.
     return $pdo->query("
         SELECT b.*,
                g.full_name AS guest_name, g.organization, g.contact_number,
@@ -422,8 +472,10 @@ function ghGenerateLinkedVisit(PDO $pdo, int $bookingId, int $actorUserId): arra
     $qr  = generateQrToken();
     $purpose = '[Guest House] ' . $b['purpose_of_stay'] . ' (Booking ' . $b['booking_reference'] . ')';
 
+    // Study transaction: several related database changes must succeed together or be rolled back together.
     $pdo->beginTransaction();
     try {
+        // Study query: Prepared SQL: creates a new row in GUEST_VISITS. Placeholders keep user/form values separate from the SQL text.
         $pdo->prepare("
             INSERT INTO guest_visits (guest_id, visit_reference, qr_token, visit_date, registration_type,
                                      purpose_of_visit, overall_status, has_vehicle,
@@ -437,21 +489,25 @@ function ghGenerateLinkedVisit(PDO $pdo, int $bookingId, int $actorUserId): arra
 
         // Link sponsoring office as a destination if present
         if (!empty($b['sponsoring_office_id'])) {
+            // Study query: Prepared SQL: creates a new row in VISIT_DESTINATIONS. Placeholders keep user/form values separate from the SQL text.
             $pdo->prepare("
                 INSERT INTO visit_destinations (visit_id, office_id, sequence_no, destination_status, is_primary)
                 VALUES (:vid, :oid, 1, 'pending', 1)
             ")->execute([':vid' => $visitId, ':oid' => $b['sponsoring_office_id']]);
         }
 
+        // Study query: Prepared SQL: updates existing row(s) in GUEST_HOUSE_BOOKINGS. Placeholders keep user/form values separate from the SQL text.
         $pdo->prepare("UPDATE guest_house_bookings SET linked_visit_id = :vid WHERE booking_id = :bid")
             ->execute([':vid' => $visitId, ':bid' => $bookingId]);
 
+        // Study transaction: commit saves all database changes made since beginTransaction().
         $pdo->commit();
     } catch (Throwable $e) {
         $pdo->rollBack();
         return ['Failed to generate visit record: ' . $e->getMessage(), null, null];
     }
 
+    // Study audit: this records the important action in activity_logs for review and accountability.
     logActivity($visitId, 'gh_visit_generated', $actorUserId, $b['sponsoring_office_id'] ?? null,
         "Generated visit {$ref} from booking {$b['booking_reference']}");
 
