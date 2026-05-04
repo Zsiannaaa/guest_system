@@ -1,11 +1,18 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Guest directory page/controller for export. It manages saved guest profiles, restrictions, exports, or details.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * guests/export.php - Excel-compatible guest export
  */
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
+// Study security: this page requires an active login before any private data is shown.
 requireLogin();
 
 $db = getDB();
@@ -21,6 +28,7 @@ header('Pragma: no-cache');
 header('Expires: 0');
 
 if ($guestId > 0) {
+    // Study query: Prepared SQL: reads rows from guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $guestStmt = $db->prepare("SELECT * FROM guests WHERE guest_id=:id LIMIT 1");
     $guestStmt->execute([':id' => $guestId]);
     $guest = $guestStmt->fetch();
@@ -33,6 +41,7 @@ if ($guestId > 0) {
     $safeName = preg_replace('/[^A-Za-z0-9_-]+/', '_', strtolower($guest['full_name']));
     header('Content-Disposition: attachment; filename="guest_profile_' . $guestId . '_' . trim($safeName, '_') . '.csv"');
 
+    // Study query: Prepared SQL: reads rows from vehicle_entries, guest_visits for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $vehicleStmt = $db->prepare("
         SELECT ve.*, gv.visit_reference, gv.visit_date
         FROM vehicle_entries ve
@@ -43,6 +52,7 @@ if ($guestId > 0) {
     $vehicleStmt->execute([':gid' => $guestId]);
     $vehicles = $vehicleStmt->fetchAll();
 
+    // Study query: Prepared SQL: reads rows from the database for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $visitStmt = $db->prepare("
         SELECT
             gv.visit_reference,
@@ -140,6 +150,7 @@ if ($guestId > 0) {
 
 header('Content-Disposition: attachment; filename="guest_directory_export_' . date('Y-m-d') . '.csv"');
 
+// Study query: Prepared SQL: reads rows from the database for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $stmt = $db->prepare("
     SELECT
         g.guest_id,

@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Reports page/controller for index. It reads filters, runs report queries, and renders or exports results.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * reports/index.php — Visit Reports
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -7,6 +13,7 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/reports/reports_module.php';
+// Study security: role-based access control blocks users from opening this page by URL unless their role is allowed.
 requireRole(ROLE_ADMIN);
 $pageTitle = 'Reports'; $db = getDB();
 $dateFrom = $_GET['date_from'] ?? date('Y-m-01'); $dateTo = $_GET['date_to'] ?? date('Y-m-d');
@@ -18,6 +25,7 @@ $perOffice = getVisitsPerOffice($db, $dateFrom, $dateTo);
 $statusBreakdown = getStatusBreakdown($db, $dateFrom, $dateTo);
 $guestList = getGuestVisitLog($db, $dateFrom, $dateTo);
 
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

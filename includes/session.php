@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: PHP page/controller for session in the guest monitoring system.
+ * Flow: Included by public pages and modules to reuse common behavior across the system.
+ * Security: Keep access checks in the calling page and escape user-controlled output before displaying it.
+ */
+/**
  * includes/session.php
  * Session initialization with security hardening
  * Include this at the top of every page before any output
@@ -42,6 +48,7 @@ if (
             );
         }
         session_destroy();
+        // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
         header('Location: ' . APP_URL . '/public/auth/login.php?timeout=1');
         exit;
     }

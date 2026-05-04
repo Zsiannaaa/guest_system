@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Guest House data-access module for gh rooms module. Guest House public pages call these functions for rooms, bookings, and reports.
+ * Flow: Called by browser pages in public/; returns data or performs database changes, then the page renders the result.
+ * Security: These functions expect validated inputs from controllers and use prepared statements for database values.
+ */
+/**
  * modules/guest_house/gh_rooms_module.php — Guest House Rooms + Room Types Model
  *
  * Pure DB logic. No HTML, no session checks.
@@ -9,28 +15,41 @@
 
 // ─── Room Types ────────────────────────────────────────────
 
+/**
+ * Study function: Supports the guest house list room types workflow in this feature area.
+ */
 function ghListRoomTypes(PDO $pdo, bool $activeOnly = false): array {
     $sql = "SELECT * FROM gh_room_types";
     if ($activeOnly) $sql .= " WHERE status='active'";
     $sql .= " ORDER BY type_name";
+    // Study query: SQL query: runs database work for this step.
     return $pdo->query($sql)->fetchAll();
 }
 
+/**
+ * Study function: Supports the guest house get room type workflow in this feature area.
+ */
 function ghGetRoomType(PDO $pdo, int $id): array|false {
+    // Study query: Prepared SQL: reads rows from gh_room_types for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("SELECT * FROM gh_room_types WHERE type_id = :id");
     $stmt->execute([':id' => $id]);
     return $stmt->fetch();
 }
 
+/**
+ * Study function: Supports the guest house create room type workflow in this feature area.
+ */
 function ghCreateRoomType(PDO $pdo, string $name, int $defaultCapacity, ?string $description): ?string {
     $name = trim($name);
     if ($name === '') return 'Type name is required.';
     if ($defaultCapacity < 1) return 'Default capacity must be at least 1.';
 
+    // Study query: Prepared SQL: reads rows from gh_room_types for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $chk = $pdo->prepare("SELECT COUNT(*) FROM gh_room_types WHERE type_name = :n");
     $chk->execute([':n' => $name]);
     if ($chk->fetchColumn() > 0) return "Room type '{$name}' already exists.";
 
+    // Study query: Prepared SQL: creates a new row in GH_ROOM_TYPES. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         INSERT INTO gh_room_types (type_name, default_capacity, description, status)
         VALUES (:n, :c, :d, 'active')
@@ -38,6 +57,9 @@ function ghCreateRoomType(PDO $pdo, string $name, int $defaultCapacity, ?string 
     return null;
 }
 
+/**
+ * Study function: Supports the guest house update room type workflow in this feature area.
+ */
 function ghUpdateRoomType(PDO $pdo, int $id, string $name, int $defaultCapacity,
                            ?string $description, string $status): ?string {
     $name = trim($name);
@@ -45,10 +67,12 @@ function ghUpdateRoomType(PDO $pdo, int $id, string $name, int $defaultCapacity,
     if ($defaultCapacity < 1) return 'Default capacity must be at least 1.';
     if (!in_array($status, ['active','inactive'], true)) return 'Invalid status.';
 
+    // Study query: Prepared SQL: reads rows from gh_room_types for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $chk = $pdo->prepare("SELECT COUNT(*) FROM gh_room_types WHERE type_name = :n AND type_id != :id");
     $chk->execute([':n' => $name, ':id' => $id]);
     if ($chk->fetchColumn() > 0) return "Another room type already uses '{$name}'.";
 
+    // Study query: Prepared SQL: updates existing row(s) in GH_ROOM_TYPES. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         UPDATE gh_room_types
         SET type_name=:n, default_capacity=:c, description=:d, status=:s
@@ -77,12 +101,17 @@ function ghListRooms(PDO $pdo, array $filters = []): array {
         WHERE " . implode(' AND ', $where) . "
         ORDER BY r.room_number
     ";
+    // Study query: Prepared SQL: runs database work for this step. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return $stmt->fetchAll();
 }
 
+/**
+ * Study function: Supports the guest house get room workflow in this feature area.
+ */
 function ghGetRoom(PDO $pdo, int $id): array|false {
+    // Study query: Prepared SQL: reads rows from guest_house_rooms, gh_room_types for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT r.*, t.type_name
         FROM guest_house_rooms r
@@ -93,6 +122,9 @@ function ghGetRoom(PDO $pdo, int $id): array|false {
     return $stmt->fetch();
 }
 
+/**
+ * Study function: Supports the guest house create room workflow in this feature area.
+ */
 function ghCreateRoom(PDO $pdo, array $data): ?string {
     $number   = trim($data['room_number'] ?? '');
     $typeId   = (int)($data['type_id'] ?? 0);
@@ -105,10 +137,12 @@ function ghCreateRoom(PDO $pdo, array $data): ?string {
     if ($typeId <= 0)      return 'Room type is required.';
     if ($capacity < 1)     return 'Capacity must be at least 1.';
 
+    // Study query: Prepared SQL: reads rows from guest_house_rooms for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $chk = $pdo->prepare("SELECT COUNT(*) FROM guest_house_rooms WHERE room_number = :n");
     $chk->execute([':n' => $number]);
     if ($chk->fetchColumn() > 0) return "Room number '{$number}' already exists.";
 
+    // Study query: Prepared SQL: creates a new row in GUEST_HOUSE_ROOMS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         INSERT INTO guest_house_rooms (room_number, type_id, capacity, floor, location_note, status, notes)
         VALUES (:n, :t, :c, :fl, :loc, 'available', :notes)
@@ -119,6 +153,9 @@ function ghCreateRoom(PDO $pdo, array $data): ?string {
     return null;
 }
 
+/**
+ * Study function: Supports the guest house update room workflow in this feature area.
+ */
 function ghUpdateRoom(PDO $pdo, int $id, array $data): ?string {
     $number   = trim($data['room_number'] ?? '');
     $typeId   = (int)($data['type_id'] ?? 0);
@@ -133,10 +170,12 @@ function ghUpdateRoom(PDO $pdo, int $id, array $data): ?string {
     if ($capacity < 1)     return 'Capacity must be at least 1.';
     if (!in_array($status, ['available','occupied','maintenance','inactive'], true)) return 'Invalid status.';
 
+    // Study query: Prepared SQL: reads rows from guest_house_rooms for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $chk = $pdo->prepare("SELECT COUNT(*) FROM guest_house_rooms WHERE room_number = :n AND room_id != :id");
     $chk->execute([':n' => $number, ':id' => $id]);
     if ($chk->fetchColumn() > 0) return "Another room already uses number '{$number}'.";
 
+    // Study query: Prepared SQL: updates existing row(s) in GUEST_HOUSE_ROOMS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         UPDATE guest_house_rooms
         SET room_number=:n, type_id=:t, capacity=:c, status=:s,
@@ -149,8 +188,12 @@ function ghUpdateRoom(PDO $pdo, int $id, array $data): ?string {
     return null;
 }
 
+/**
+ * Study function: Supports the guest house set room status workflow in this feature area.
+ */
 function ghSetRoomStatus(PDO $pdo, int $id, string $status): void {
     if (!in_array($status, ['available','occupied','maintenance','inactive'], true)) return;
+    // Study query: Prepared SQL: updates existing row(s) in GUEST_HOUSE_ROOMS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("UPDATE guest_house_rooms SET status = :s WHERE room_id = :id")
         ->execute([':s' => $status, ':id' => $id]);
 }
@@ -173,6 +216,7 @@ function ghIsRoomAvailable(PDO $pdo, int $roomId, string $from, string $to,
         $sql .= " AND booking_id != :bid";
         $params[':bid'] = $ignoreBookingId;
     }
+    // Study query: Prepared SQL: runs database work for this step. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return ((int)$stmt->fetchColumn()) === 0;
@@ -183,6 +227,7 @@ function ghIsRoomAvailable(PDO $pdo, int $roomId, string $from, string $to,
  * by availability in a date range.
  */
 function ghAvailableRoomsForRange(PDO $pdo, string $from, string $to): array {
+    // Study query: SQL query: reads rows from guest_house_rooms, gh_room_types for lookup, validation, or display.
     $rooms = $pdo->query("
         SELECT r.*, t.type_name
         FROM guest_house_rooms r

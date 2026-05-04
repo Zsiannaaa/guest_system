@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Creates the shared PDO database connection used by pages, includes, and module functions.
+ * Flow: Loaded first by other PHP files; it does not render a page by itself.
+ * Security: PDO is configured to throw exceptions and use real prepared statements where supported.
+ */
+/**
  * config/db.php
  * PDO Database Connection
  * University Guest Monitoring & Visitor Management System

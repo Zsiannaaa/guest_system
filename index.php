@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Public landing page that routes guests and staff into the correct system entry points.
+ * Flow: Entry file that connects visitors or staff to the rest of the system.
+ * Security: Keep access checks in the calling page and escape user-controlled output before displaying it.
+ */
+/**
  * index.php - Public Landing Page
  * Public paths: Guest Pre-Registration, Staff Login, and Visit Status
  */
@@ -8,6 +14,7 @@ require_once __DIR__ . '/config/db.php';
 require_once __DIR__ . '/includes/helpers.php';
 require_once __DIR__ . '/includes/auth.php';
 
+// Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
 if (isLoggedIn()) { redirect(getDashboardUrl()); }
 
 $publicPageTitle = APP_NAME;

@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Shared public-facing footer that closes public pages and loads common scripts.
+ * Flow: Included by public pages and modules to reuse common behavior across the system.
+ * Security: Keep access checks in the calling page and escape user-controlled output before displaying it.
+ */
+/**
  * Public page shell footer.
  */
 

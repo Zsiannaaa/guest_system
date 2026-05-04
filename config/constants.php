@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Defines application-wide constants such as URLs, roles, statuses, and timeout values.
+ * Flow: Loaded first by other PHP files; it does not render a page by itself.
+ * Security: Keep access checks in the calling page and escape user-controlled output before displaying it.
+ */
+/**
  * config/constants.php
  * Application-wide constants
  */

@@ -1,11 +1,18 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Reports page/controller for export. It reads filters, runs report queries, and renders or exports results.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * reports/export.php - Excel-compatible visit export
  */
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
+// Study security: role-based access control blocks users from opening this page by URL unless their role is allowed.
 requireRole(ROLE_ADMIN);
 
 $db = getDB();
@@ -15,6 +22,7 @@ if (!strtotime($dateFrom)) $dateFrom = '1970-01-01';
 if (!strtotime($dateTo)) $dateTo = '9999-12-31';
 if ($dateFrom > $dateTo) [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
 
+// Study query: Prepared SQL: reads rows from the database for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $stmt = $db->prepare("
     SELECT
         gv.visit_reference,

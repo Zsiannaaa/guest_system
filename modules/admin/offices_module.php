@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Admin data-access module for offices module records. Public admin pages call these functions instead of writing all SQL inline.
+ * Flow: Called by browser pages in public/; returns data or performs database changes, then the page renders the result.
+ * Security: These functions expect validated inputs from controllers and use prepared statements for database values.
+ */
+/**
  * modules/admin/offices_module.php — Office Model
  *
  * Contains ALL database logic for office management.
@@ -16,6 +22,7 @@ function generateUniqueOfficeCode(PDO $pdo, string $name): string {
     $code = $base;
     $suffix = 1;
 
+    // Study query: Prepared SQL: reads rows from offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM offices WHERE office_code = :code");
     do {
         $stmt->execute([':code' => $code]);
@@ -30,6 +37,7 @@ function generateUniqueOfficeCode(PDO $pdo, string $name): string {
  * Fetch all offices with staff count.
  */
 function getOffices(PDO $pdo): array {
+    // Study query: SQL query: reads rows from users, offices for lookup, validation, or display.
     return $pdo->query("
         SELECT o.*,
                (SELECT COUNT(*) FROM users u WHERE u.office_id = o.office_id AND u.status = 'active') AS staff_count
@@ -42,6 +50,7 @@ function getOffices(PDO $pdo): array {
  * Fetch a single office by ID.
  */
 function getOfficeById(PDO $pdo, int $id): array|false {
+    // Study query: Prepared SQL: reads rows from offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("SELECT * FROM offices WHERE office_id = :id");
     $stmt->execute([':id' => $id]);
     return $stmt->fetch();
@@ -54,6 +63,7 @@ function addOffice(PDO $pdo, string $name, string $location): ?string {
     if (empty($name)) return 'Office name is required.';
 
     $code = generateUniqueOfficeCode($pdo, $name);
+    // Study query: Prepared SQL: creates a new row in OFFICES. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("INSERT INTO offices (office_name, office_code, office_location, status) VALUES (:n, :c, :l, 'active')")
         ->execute([':n' => $name, ':c' => $code, ':l' => $location ?: null]);
     return null;
@@ -68,10 +78,12 @@ function updateOffice(PDO $pdo, int $id, string $name, string $code, string $loc
     if (empty($code)) return 'Office code is required.';
 
     // Check code uniqueness
+    // Study query: Prepared SQL: reads rows from offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $chk = $pdo->prepare("SELECT COUNT(*) FROM offices WHERE office_code = :c AND office_id != :id");
     $chk->execute([':c' => $code, ':id' => $id]);
     if ($chk->fetchColumn() > 0) return "Office code '{$code}' is already used.";
 
+    // Study query: Prepared SQL: updates existing row(s) in OFFICES. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         UPDATE offices SET office_name=:n, office_code=:c, office_location=:l,
                            requires_arrival_confirmation=:conf, status=:s
@@ -85,9 +97,11 @@ function updateOffice(PDO $pdo, int $id, string $name, string $code, string $loc
  * Toggle office active/inactive.
  */
 function toggleOfficeStatus(PDO $pdo, int $id): void {
+    // Study query: Prepared SQL: reads rows from offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("SELECT status FROM offices WHERE office_id = :id");
     $stmt->execute([':id' => $id]);
     $current = $stmt->fetchColumn();
     $new = $current === 'active' ? 'inactive' : 'active';
+    // Study query: Prepared SQL: updates existing row(s) in OFFICES. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("UPDATE offices SET status = :s WHERE office_id = :id")->execute([':s' => $new, ':id' => $id]);
 }

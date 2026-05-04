@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Visit page/controller for list. It coordinates request data, visit module functions, and the shared layout.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * visits/list.php — All Visits List
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -7,6 +13,7 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/visits/visits_module.php';
+// Study security: this page requires an active login before any private data is shown.
 requireLogin();
 $pageTitle = 'All Visits'; $db = getDB();
 
@@ -15,9 +22,11 @@ if (isOfficeStaff()) {
     $where .= " AND EXISTS (SELECT 1 FROM visit_destinations vd WHERE vd.visit_id=gv.visit_id AND vd.office_id=:oid)";
     $params[':oid'] = currentUser()['office_id'];
 }
+// Study query: Prepared SQL: reads rows from guest_visits, guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $stmt = $db->prepare("SELECT gv.visit_id, gv.visit_reference, gv.visit_date, gv.overall_status, gv.registration_type, gv.actual_check_in, gv.actual_check_out, g.full_name AS guest_name, g.organization FROM guest_visits gv JOIN guests g ON gv.guest_id=g.guest_id WHERE {$where} ORDER BY gv.visit_date DESC, gv.created_at DESC LIMIT 500");
 $stmt->execute($params);
 $visits = $stmt->fetchAll(); $total = count($visits);
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

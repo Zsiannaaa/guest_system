@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Public status lookup page where a guest can check a submitted visit reference.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * public/check_status.php - Guest Visit Status Checker (No login)
  */
 require_once __DIR__ . '/../config/db.php';
@@ -13,6 +19,7 @@ $lookupMode = str_starts_with(strtoupper($ref), 'QR-') ? 'qr' : 'reference';
 
 if ($ref !== '') {
     if ($lookupMode === 'qr') {
+        // Study query: Prepared SQL: reads rows from guest_visits, guests, visit_destinations, offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
         $stmt = $db->prepare("
             SELECT gv.visit_reference, gv.visit_date, gv.overall_status, gv.registration_type,
                    gv.actual_check_in, gv.actual_check_out, gv.purpose_of_visit,
@@ -28,6 +35,7 @@ if ($ref !== '') {
         ");
         $stmt->execute([':qr_token' => $ref]);
     } else {
+        // Study query: Prepared SQL: reads rows from guest_visits for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
         $stmt = $db->prepare("
             SELECT visit_reference, visit_date, overall_status, registration_type
             FROM guest_visits

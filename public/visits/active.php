@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Visit page/controller for active. It coordinates request data, visit module functions, and the shared layout.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * visits/active.php — Active Visitors (currently checked in)
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -7,10 +13,12 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/visits/visits_module.php';
+// Study security: role-based access control blocks users from opening this page by URL unless their role is allowed.
 requireRole([ROLE_GUARD, ROLE_ADMIN]);
 $pageTitle = 'Active Visitors';
 $db = getDB();
 
+// Study query: Prepared SQL: reads rows from guest_visits, guests, visit_destinations, offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $stmt = $db->prepare("
     SELECT gv.visit_id, gv.visit_reference, gv.actual_check_in,
            gv.registration_type, gv.has_vehicle, gv.expected_time_out,
@@ -28,6 +36,7 @@ $stmt->execute();
 $visitors = $stmt->fetchAll();
 $total = count($visitors);
 
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

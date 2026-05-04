@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Visit destination data-access module for office routing and office-side handling of visits.
+ * Flow: Called by browser pages in public/; returns data or performs database changes, then the page renders the result.
+ * Security: These functions expect validated inputs from controllers and use prepared statements for database values.
+ */
+/**
  * modules/visits/destinations_module.php — Office Destination Model
  *
  * Contains ALL database logic for visit destinations (office routing).
@@ -11,6 +17,7 @@
  * Get destinations for a visit.
  */
 function getDestinationsForVisit(PDO $pdo, int $visitId): array {
+    // Study query: Prepared SQL: reads rows from visit_destinations, offices, users for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT vd.*, o.office_name, u.full_name AS received_by_name
         FROM visit_destinations vd
@@ -27,6 +34,7 @@ function getDestinationsForVisit(PDO $pdo, int $visitId): array {
  * Get a single destination with full context.
  */
 function getDestinationDetails(PDO $pdo, int $destId): array|false {
+    // Study query: Prepared SQL: reads rows from visit_destinations, offices, guest_visits, guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT vd.*, o.office_name, o.requires_arrival_confirmation,
                gv.visit_reference, gv.purpose_of_visit, gv.overall_status,
@@ -46,6 +54,7 @@ function getDestinationDetails(PDO $pdo, int $destId): array|false {
  * Fetch incoming guests for an office (pending destinations of checked-in visits).
  */
 function getIncomingGuests(PDO $pdo, int $officeId): array {
+    // Study query: Prepared SQL: reads rows from visit_destinations, guest_visits, guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT vd.*, gv.visit_reference, gv.actual_check_in, gv.purpose_of_visit,
                g.full_name AS guest_name, g.organization
@@ -64,6 +73,7 @@ function getIncomingGuests(PDO $pdo, int $officeId): array {
  * Fetch currently serving guests for an office.
  */
 function getCurrentlyServing(PDO $pdo, int $officeId): array {
+    // Study query: Prepared SQL: reads rows from visit_destinations, guest_visits, guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT vd.*, gv.visit_reference, gv.purpose_of_visit,
                g.full_name AS guest_name, g.organization
@@ -83,6 +93,7 @@ function getCurrentlyServing(PDO $pdo, int $officeId): array {
  */
 function getOfficeVisitHistory(PDO $pdo, int $officeId, int $limit = 200): array {
     $limit = max(1, min($limit, 500));
+    // Study query: Prepared SQL: reads rows from visit_destinations, guest_visits, guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT vd.*, gv.visit_reference, gv.visit_date, gv.overall_status,
                g.full_name AS guest_name, g.organization
@@ -101,6 +112,7 @@ function getOfficeVisitHistory(PDO $pdo, int $officeId, int $limit = 200): array
  * Confirm arrival of a guest at an office.
  */
 function confirmDestinationArrival(PDO $pdo, int $destId, int $userId): void {
+    // Study query: Prepared SQL: updates existing row(s) in VISIT_DESTINATIONS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         UPDATE visit_destinations
         SET destination_status = 'arrived', received_by_user_id = :uid, arrival_time = NOW()
@@ -112,6 +124,7 @@ function confirmDestinationArrival(PDO $pdo, int $destId, int $userId): void {
  * Start serving a guest at an office.
  */
 function startDestinationService(PDO $pdo, int $destId): void {
+    // Study query: Prepared SQL: updates existing row(s) in VISIT_DESTINATIONS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         UPDATE visit_destinations SET destination_status = 'in_service'
         WHERE destination_id = :did AND destination_status IN ('pending','arrived')
@@ -122,6 +135,7 @@ function startDestinationService(PDO $pdo, int $destId): void {
  * Complete a destination.
  */
 function completeDestination(PDO $pdo, int $destId, string $notes = ''): void {
+    // Study query: Prepared SQL: updates existing row(s) in VISIT_DESTINATIONS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         UPDATE visit_destinations
         SET destination_status = 'completed', completed_time = NOW(),
@@ -137,12 +151,14 @@ function completeDestination(PDO $pdo, int $destId, string $notes = ''): void {
 function addDestinationToVisit(PDO $pdo, int $visitId, int $officeId, bool $isUnplanned,
                                string $notes, bool $autoConfirm, int $userId): string {
     // Get next sequence number
+    // Study query: Prepared SQL: reads rows from visit_destinations for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $seqStmt = $pdo->prepare("SELECT COALESCE(MAX(sequence_no), 0) + 1 FROM visit_destinations WHERE visit_id = :vid");
     $seqStmt->execute([':vid' => $visitId]);
     $nextSeq = (int) $seqStmt->fetchColumn();
 
     $initStatus = $autoConfirm ? 'arrived' : 'pending';
 
+    // Study query: Prepared SQL: creates a new row in VISIT_DESTINATIONS. Placeholders keep user/form values separate from the SQL text.
     $pdo->prepare("
         INSERT INTO visit_destinations
             (visit_id, office_id, sequence_no, destination_status, is_primary, is_unplanned,
@@ -156,6 +172,7 @@ function addDestinationToVisit(PDO $pdo, int $visitId, int $officeId, bool $isUn
         ':notes' => $notes ?: null,
     ]);
 
+    // Study query: Prepared SQL: reads rows from offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $nameStmt = $pdo->prepare("SELECT office_name FROM offices WHERE office_id = :oid");
     $nameStmt->execute([':oid' => $officeId]);
     return $nameStmt->fetchColumn();
@@ -165,6 +182,7 @@ function addDestinationToVisit(PDO $pdo, int $visitId, int $officeId, bool $isUn
  * Get office IDs already assigned to a visit.
  */
 function getAssignedOfficeIds(PDO $pdo, int $visitId): array {
+    // Study query: Prepared SQL: reads rows from visit_destinations for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("SELECT office_id FROM visit_destinations WHERE visit_id = :vid");
     $stmt->execute([':vid' => $visitId]);
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -185,6 +203,7 @@ function lookupActiveVisitorsForOffice(PDO $pdo, string $query, ?int $officeId =
         )";
         $params[':office_id'] = $officeId;
     }
+    // Study query: Prepared SQL: reads rows from guest_visits, guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
     $stmt = $pdo->prepare("
         SELECT gv.visit_id, gv.visit_reference, gv.purpose_of_visit, gv.actual_check_in,
                g.full_name AS guest_name, g.organization

@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Guest directory page/controller for restricted. It manages saved guest profiles, restrictions, exports, or details.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * guests/restricted.php — Restricted Guests List
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -7,10 +13,13 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/guests/guests_module.php';
+// Study security: role-based access control blocks users from opening this page by URL unless their role is allowed.
 requireRole(ROLE_ADMIN);
 $pageTitle = 'Restricted Guests'; $db = getDB();
+// Study query: Prepared SQL: reads rows from guests, restricted_guests, users for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $stmt = $db->prepare("SELECT g.*, r.reason, r.restricted_at, r.restriction_id, u.full_name AS restricted_by_name FROM guests g JOIN restricted_guests r ON g.guest_id=r.guest_id LEFT JOIN users u ON r.restricted_by_user_id=u.user_id WHERE r.is_active=1 ORDER BY r.restricted_at DESC");
 $stmt->execute(); $restricted = $stmt->fetchAll(); $total=count($restricted);
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

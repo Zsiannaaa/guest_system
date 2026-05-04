@@ -1,13 +1,21 @@
 <?php
+/**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Guest directory page/controller for list. It manages saved guest profiles, restrictions, exports, or details.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/guests/guests_module.php';
+// Study security: this page requires an active login before any private data is shown.
 requireLogin();
 $pageTitle = 'Guest Directory';
 $db = getDB();
 
+// Study query: Prepared SQL: reads rows from guests, guest_visits for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $stmt = $db->prepare("
     SELECT g.*,
            COUNT(gv.visit_id) AS total_visits,
@@ -21,6 +29,7 @@ $stmt->execute();
 $guests = $stmt->fetchAll();
 $total = count($guests);
 
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

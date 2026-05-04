@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Admin page/controller for activity logs. It manages users, offices, or audit information.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * admin/activity_logs.php - Audit Logs
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -8,6 +14,7 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/admin/users_module.php';
 require_once __DIR__ . '/../../modules/admin/offices_module.php';
+// Study security: role-based access control blocks users from opening this page by URL unless their role is allowed.
 requireRole(ROLE_ADMIN);
 
 $pageTitle = 'Activity Logs';
@@ -52,6 +59,7 @@ if ($dateTo !== '') {
 
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
+// Study query: SQL query: reads rows from activity_logs for lookup, validation, or display.
 $actions = $db->query("SELECT DISTINCT action_type FROM activity_logs ORDER BY action_type")->fetchAll(PDO::FETCH_COLUMN);
 $users = $db->query("
     SELECT DISTINCT u.user_id, u.full_name, u.role
@@ -60,6 +68,7 @@ $users = $db->query("
     ORDER BY u.full_name
 ")->fetchAll();
 
+// Study query: Prepared SQL: reads rows from activity_logs, users, guest_visits for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $countStmt = $db->prepare("
     SELECT COUNT(*)
     FROM activity_logs al
@@ -75,6 +84,7 @@ if ($page > $totalPages) {
     $offset = ($page - 1) * $perPage;
 }
 
+// Study query: Prepared SQL: reads rows from activity_logs, users, offices, guest_visits for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $logStmt = $db->prepare("
     SELECT
         al.*,
@@ -122,6 +132,7 @@ function auditActionClass(string $type): string
     return 'badge-secondary';
 }
 
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 

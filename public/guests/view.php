@@ -1,5 +1,11 @@
 <?php
 /**
+ * STUDY NOTES FOR REVIEW
+ * Purpose: Guest directory page/controller for view. It manages saved guest profiles, restrictions, exports, or details.
+ * Flow: Browser-accessible route: load config/includes, protect access if needed, handle GET/POST, call modules or SQL, then render HTML.
+ * Security: Role checks, CSRF checks, prepared statements, and escaped output are used here to protect forms and direct URL access.
+ */
+/**
  * guests/view.php — Guest Profile
  */
 require_once __DIR__ . '/../../config/db.php';
@@ -7,17 +13,23 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/guests/guests_module.php';
+// Study security: this page requires an active login before any private data is shown.
 requireLogin();
 $pageTitle = 'Guest Profile'; $db = getDB();
 $guestId = (int)($_GET['id'] ?? 0);
+// Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
 if (!$guestId) redirect(getDashboardUrl());
+// Study query: Prepared SQL: reads rows from guests for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $gStmt = $db->prepare("SELECT * FROM guests WHERE guest_id=:id"); $gStmt->execute([':id'=>$guestId]);
 $guest = $gStmt->fetch();
+// Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
 if (!$guest) { setFlash('error','Guest not found.'); redirect(APP_URL.'/public/guests/list.php'); }
+// Study query: Prepared SQL: reads rows from guest_visits, users, visit_destinations, offices for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $vStmt = $db->prepare("SELECT gv.*, u.full_name AS guard_name, GROUP_CONCAT(o.office_name ORDER BY vd.sequence_no SEPARATOR ', ') AS offices FROM guest_visits gv LEFT JOIN users u ON gv.processed_by_guard_id=u.user_id LEFT JOIN visit_destinations vd ON gv.visit_id=vd.visit_id LEFT JOIN offices o ON vd.office_id=o.office_id WHERE gv.guest_id=:gid GROUP BY gv.visit_id ORDER BY gv.visit_date DESC");
 $vStmt->execute([':gid'=>$guestId]); $visits = $vStmt->fetchAll();
 $rStmt = $db->prepare("SELECT r.*, u.full_name AS restricted_by FROM restricted_guests r LEFT JOIN users u ON r.restricted_by_user_id=u.user_id WHERE r.guest_id=:gid AND r.is_active=1 LIMIT 1");
 $rStmt->execute([':gid'=>$guestId]); $restriction = $rStmt->fetch();
+// Study query: Prepared SQL: reads rows from vehicle_entries, guest_visits for lookup, validation, or display. Placeholders keep user/form values separate from the SQL text.
 $vehStmt = $db->prepare("
     SELECT ve.*, gv.visit_reference, gv.visit_date
     FROM vehicle_entries ve
@@ -27,6 +39,7 @@ $vehStmt = $db->prepare("
     LIMIT 1
 ");
 $vehStmt->execute([':gid'=>$guestId]); $vehicle = $vehStmt->fetch();
+// Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>
 
