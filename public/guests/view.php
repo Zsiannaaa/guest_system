@@ -13,8 +13,8 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/guests/guests_module.php';
-// Study security: this page requires an active login before any private data is shown.
-requireLogin();
+// Study security: only gate/admin roles can view full guest profiles.
+requireRole([ROLE_ADMIN, ROLE_GUARD]);
 $pageTitle = 'Guest Profile'; $db = getDB();
 $guestId = (int)($_GET['id'] ?? 0);
 // Study flow: redirect after this step moves the user to the next page and helps avoid duplicate form submissions.
@@ -39,6 +39,16 @@ $vehStmt = $db->prepare("
     LIMIT 1
 ");
 $vehStmt->execute([':gid'=>$guestId]); $vehicle = $vehStmt->fetch();
+if ($vehicle) {
+    foreach (['vehicle_color', 'vehicle_model'] as $field) {
+        if (($vehicle[$field] ?? '') === '') {
+            $vehicle[$field] = '-';
+        }
+    }
+    if (($vehicle['driver_name'] ?? '') === '' && empty($vehicle['is_driver_the_guest'])) {
+        $vehicle['driver_name'] = '-';
+    }
+}
 // Study flow: controller work is done above; the shared header starts the visible page layout below.
 include __DIR__ . '/../../includes/header.php';
 ?>

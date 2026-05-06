@@ -4,6 +4,8 @@
 
 document.addEventListener('DOMContentLoaded', function () {
   bindCustomConfirmDialogs();
+  bindNotificationDropdown();
+  bindAppSounds();
 
   // Auto-dismiss flash messages after 5s
   const flash = document.getElementById('flashMsg');
@@ -24,6 +26,93 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 });
+
+function bindAppSounds() {
+  const body = document.body;
+  if (!body) return;
+
+  const base = body.dataset.soundBase || '';
+  const cue = body.dataset.appSound || '';
+  const soundMap = {
+    error: 'error.mp3',
+    login: 'login_sound.mp3',
+    notification: 'notification.mp3',
+    success: 'success.mp3'
+  };
+
+  const playSound = name => {
+    if (!base || !soundMap[name]) return;
+    const audio = new Audio(base + '/' + soundMap[name]);
+    audio.volume = 0.55;
+    const played = audio.play();
+    if (played && typeof played.catch === 'function') {
+      played.catch(() => {
+        window.__pendingAppSound = name;
+      });
+    }
+  };
+
+  window.playAppSound = playSound;
+
+  if (cue) {
+    setTimeout(() => playSound(cue), 120);
+  }
+
+  const unlock = () => {
+    if (window.__pendingAppSound) {
+      const pending = window.__pendingAppSound;
+      window.__pendingAppSound = '';
+      playSound(pending);
+    }
+    document.removeEventListener('click', unlock);
+    document.removeEventListener('keydown', unlock);
+  };
+
+  document.addEventListener('click', unlock);
+  document.addEventListener('keydown', unlock);
+}
+
+function bindNotificationDropdown() {
+  const button = document.getElementById('notifBtn');
+  const dropdown = document.getElementById('notifDropdown');
+  if (!button || !dropdown) return;
+
+  const positionDropdown = () => {
+    const rect = button.getBoundingClientRect();
+    const width = Math.min(340, window.innerWidth - 24);
+    const left = Math.max(12, Math.min(window.innerWidth - width - 12, rect.right - width));
+    dropdown.style.width = width + 'px';
+    dropdown.style.left = left + 'px';
+    dropdown.style.top = Math.round(rect.bottom + 10) + 'px';
+  };
+
+  button.addEventListener('click', function (event) {
+    event.stopPropagation();
+    positionDropdown();
+    const open = dropdown.classList.toggle('show');
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+
+  dropdown.addEventListener('click', function (event) {
+    event.stopPropagation();
+  });
+
+  document.addEventListener('click', function () {
+    dropdown.classList.remove('show');
+    button.setAttribute('aria-expanded', 'false');
+  });
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      dropdown.classList.remove('show');
+      button.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  window.addEventListener('resize', function () {
+    if (dropdown.classList.contains('show')) positionDropdown();
+  });
+}
 
 function ensureConfirmDialog() {
   let dialog = document.getElementById('appConfirmDialog');

@@ -1,1 +1,13 @@
 hostingcredentials.txt
+
+# Private deployment credentials
+config/db.local.php
+
+# Local database backups and generated docs
+db_backups/
+docs/walkthrough_render/
+
+# Editor and OS noise
+.vscode/
+.DS_Store
+Thumbs.db

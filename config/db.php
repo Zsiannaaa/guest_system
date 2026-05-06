@@ -11,11 +11,30 @@
  * University Guest Monitoring & Visitor Management System
  */
 
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'guest_system');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_CHARSET', 'utf8mb4');
+$dbConfig = [
+    'host' => 'localhost',
+    'name' => 'guest_system',
+    'user' => 'root',
+    'pass' => '',          // Default XAMPP MySQL password is empty
+    'charset' => 'utf8mb4',
+];
+
+$localConfigFile = __DIR__ . '/db.local.php';
+if (is_file($localConfigFile)) {
+    $localConfig = require $localConfigFile;
+    if (is_array($localConfig)) {
+        $dbConfig = array_replace($dbConfig, array_filter(
+            $localConfig,
+            static fn($value) => $value !== null
+        ));
+    }
+}
+
+define('DB_HOST', $dbConfig['host']);
+define('DB_NAME', $dbConfig['name']);
+define('DB_USER', $dbConfig['user']);
+define('DB_PASS', $dbConfig['pass']);
+define('DB_CHARSET', $dbConfig['charset']);
 
 /**
  * Returns a PDO connection instance.

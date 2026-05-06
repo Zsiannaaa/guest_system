@@ -37,6 +37,161 @@ if (isOfficeStaff()) {
     $quickActionLabel = 'Expected';
     $quickDropdownLabel = 'Expected Guests';
 }
+
+if (!function_exists('topbarNotifications')) {
+function topbarNotifications(): array {
+    if (isGuestHouseStaff()) {
+        return [
+            'title' => 'Notifications',
+            'viewAllUrl' => APP_URL . '/public/dashboard/guest_house.php',
+            'items' => [],
+        ];
+    }
+
+    $db = getDB();
+    $items = [];
+
+    if (isAdminOrGuard()) {
+        $stmt = $db->prepare("
+            SELECT gv.visit_id, gv.visit_reference, gv.visit_date, gv.expected_time_in,
+                   g.full_name AS guest_name,
+                   GROUP_CONCAT(o.office_name ORDER BY vd.sequence_no SEPARATOR ', ') AS offices
+            FROM guest_visits gv
+            JOIN guests g ON gv.guest_id = g.guest_id
+            LEFT JOIN visit_destinations vd ON vd.visit_id = gv.visit_id
+            LEFT JOIN offices o ON o.office_id = vd.office_id
+            WHERE gv.registration_type = 'pre_registered'
+              AND gv.overall_status = 'pending'
+              AND gv.visit_date >= CURDATE()
+            GROUP BY gv.visit_id
+            ORDER BY gv.visit_date ASC, gv.expected_time_in ASC, gv.created_at DESC
+            LIMIT 8
+        ");
+        $stmt->execute();
+
+        foreach ($stmt->fetchAll() as $row) {
+            $items[] = [
+                'icon' => 'calendar-clock',
+                'title' => $row['guest_name'] . ' pre-registered',
+                'meta' => trim(formatDate($row['visit_date']) . ' ' . formatTime($row['expected_time_in'])),
+                'body' => $row['offices'] ?: 'No office selected',
+                'url' => APP_URL . '/public/visits/checkin.php?id=' . (int)$row['visit_id'],
+            ];
+        }
+
+        return [
+            'title' => isAdmin() ? 'Campus Notifications' : 'Guard Notifications',
+            'viewAllUrl' => APP_URL . '/public/visits/checkin.php',
+            'items' => $items,
+        ];
+    }
+
+    if (isOfficeStaff()) {
+        $stmt = $db->prepare("
+            SELECT vd.destination_id, gv.visit_id, gv.visit_reference, gv.actual_check_in,
+                   gv.purpose_of_visit, g.full_name AS guest_name, g.organization
+            FROM visit_destinations vd
+            JOIN guest_visits gv ON vd.visit_id = gv.visit_id
+            JOIN guests g ON gv.guest_id = g.guest_id
+            WHERE vd.office_id = :office_id
+              AND vd.destination_status = 'pending'
+              AND gv.overall_status = 'checked_in'
+            ORDER BY gv.actual_check_in DESC
+            LIMIT 8
+        ");
+        $stmt->execute([':office_id' => currentOfficeId()]);
+
+        foreach ($stmt->fetchAll() as $row) {
+            $items[] = [
+                'icon' => 'user-check',
+                'title' => $row['guest_name'] . ' is heading to your office',
+                'meta' => formatDateTime($row['actual_check_in']),
+                'body' => $row['purpose_of_visit'] ?: ($row['organization'] ?: $row['visit_reference']),
+                'url' => APP_URL . '/public/office/handle.php?dest_id=' . (int)$row['destination_id'],
+            ];
+        }
+
+        return [
+            'title' => 'Office Notifications',
+            'viewAllUrl' => APP_URL . '/public/office/incoming.php',
+            'items' => $items,
+        ];
+    }
+
+    return [
+        'title' => 'Notifications',
+        'viewAllUrl' => getDashboardUrl(),
+        'items' => [],
+    ];
+}
+}
+
+if (!function_exists('flashMessageHtml')) {
+function flashMessageHtml(string $message): string {
+    $placeholders = [];
+    $i = 0;
+
+    $message = preg_replace_callback(
+        '/<a\s+href="([^"]+)"[^>]*>(.*?)<\/a>/is',
+        function (array $match) use (&$placeholders, &$i): string {
+            $href = $match[1];
+            $label = trim(strip_tags($match[2]));
+            if (!str_starts_with($href, APP_URL . '/') || $label === '') {
+                return $match[0];
+            }
+            $token = "__FLASH_HTML_{$i}__";
+            $i++;
+            $placeholders[$token] = '<a href="' . e($href) . '" style="font-weight:800;color:inherit;text-decoration:underline;">' . e($label) . '</a>';
+            return $token;
+        },
+        $message
+    );
+
+    $message = preg_replace_callback(
+        '/<strong>(.*?)<\/strong>/is',
+        function (array $match) use (&$placeholders, &$i): string {
+            $label = trim(strip_tags($match[1]));
+            if ($label === '') {
+                return '';
+            }
+            $token = "__FLASH_HTML_{$i}__";
+            $i++;
+            $placeholders[$token] = '<strong>' . e($label) . '</strong>';
+            return $token;
+        },
+        $message
+    );
+
+    $escaped = e($message);
+    return strtr($escaped, $placeholders);
+}
+}
+
+$topbarNotifications = topbarNotifications();
+$topbarNotificationItems = $topbarNotifications['items'];
+$topbarNotificationCount = count($topbarNotificationItems);
+$appSoundCue = '';
+
+if (!empty($_SESSION['play_login_sound'])) {
+    $appSoundCue = 'login';
+    unset($_SESSION['play_login_sound']);
+} elseif (!empty($flash['type']) && in_array($flash['type'], ['success', 'error'], true)) {
+    $appSoundCue = $flash['type'];
+}
+
+if ($appSoundCue === '' && $topbarNotificationCount > 0) {
+    $notificationSignature = currentUserRole() . '|' . implode('|', array_map(
+        static fn(array $item): string => $item['url'],
+        $topbarNotificationItems
+    ));
+
+    if (($_SESSION['notification_sound_signature'] ?? '') !== $notificationSignature) {
+        $appSoundCue = 'notification';
+        $_SESSION['notification_sound_signature'] = $notificationSignature;
+    }
+} elseif ($topbarNotificationCount === 0) {
+    unset($_SESSION['notification_sound_signature']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -48,7 +203,9 @@ if (isOfficeStaff()) {
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
-<body>
+<body data-app-sound="<?= e($appSoundCue) ?>"
+      data-sound-base="<?= APP_URL ?>/assets/sound"
+      data-notification-count="<?= $topbarNotificationCount ?>">
 <div class="app-wrapper">
 
 <!-- ═══ SIDEBAR ═══════════════════════════════════════════ -->
@@ -223,10 +380,41 @@ if (isOfficeStaff()) {
 
     <div class="topbar-right">
       <!-- Notifications -->
-      <button class="notif-btn" title="Notifications">
+      <button class="notif-btn" id="notifBtn" title="Notifications" aria-haspopup="true" aria-expanded="false">
         <i data-lucide="bell" style="width:20px;height:20px;"></i>
-        <span class="notif-badge">3</span>
+        <?php if ($topbarNotificationCount > 0): ?>
+        <span class="notif-badge"><?= $topbarNotificationCount > 9 ? '9+' : $topbarNotificationCount ?></span>
+        <?php endif; ?>
       </button>
+
+      <div class="notif-dropdown" id="notifDropdown">
+        <div class="notif-dropdown-head">
+          <div>
+            <div class="notif-title"><?= e($topbarNotifications['title']) ?></div>
+            <div class="notif-subtitle"><?= $topbarNotificationCount ?> active alert<?= $topbarNotificationCount === 1 ? '' : 's' ?></div>
+          </div>
+          <a href="<?= e($topbarNotifications['viewAllUrl']) ?>" class="notif-view-all">View all</a>
+        </div>
+        <div class="notif-list">
+          <?php if (empty($topbarNotificationItems)): ?>
+          <div class="notif-empty">
+            <div class="notif-empty-title">No new notifications</div>
+            <div class="notif-empty-copy">You are all caught up for now.</div>
+          </div>
+          <?php else: ?>
+          <?php foreach ($topbarNotificationItems as $item): ?>
+          <a href="<?= e($item['url']) ?>" class="notif-item">
+            <span class="notif-item-icon"><i data-lucide="<?= e($item['icon']) ?>"></i></span>
+            <span class="notif-item-main">
+              <span class="notif-item-title"><?= e($item['title']) ?></span>
+              <span class="notif-item-body"><?= e($item['body']) ?></span>
+              <span class="notif-item-meta"><?= e($item['meta']) ?></span>
+            </span>
+          </a>
+          <?php endforeach; ?>
+          <?php endif; ?>
+        </div>
+      </div>
 
       <!-- User menu -->
       <div class="user-menu" id="userMenuBtn">
@@ -239,16 +427,6 @@ if (isOfficeStaff()) {
         </div>
         <i data-lucide="chevron-down" class="user-chevron"></i>
       </div>
-
-      <a href="<?= $quickActionUrl ?>" class="topbar-action-btn topbar-action-lookup">
-        <i data-lucide="<?= $quickActionIcon ?>"></i>
-        <span><?= $quickActionLabel ?></span>
-      </a>
-
-      <a href="<?= APP_URL ?>/public/auth/logout.php" class="topbar-action-btn topbar-action-logout">
-        <i data-lucide="log-out"></i>
-        <span>Logout</span>
-      </a>
 
       <!-- Dropdown (simple) -->
       <div id="userDropdown" style="display:none;position:absolute;top:60px;right:16px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);min-width:180px;z-index:200;padding:8px 0;">
@@ -275,7 +453,7 @@ if (isOfficeStaff()) {
   <?php if ($flash): ?>
   <div class="flash-msg flash-<?= $flash['type'] === 'error' ? 'error' : htmlspecialchars($flash['type']) ?>" id="flashMsg">
     <i data-lucide="<?= $flash['type'] === 'success' ? 'check-circle' : ($flash['type'] === 'error' ? 'alert-circle' : 'info') ?>"></i>
-    <span><?= $flash['message'] ?></span>
+    <span><?= flashMessageHtml($flash['message']) ?></span>
     <button class="flash-close" onclick="document.getElementById('flashMsg').remove()">
       <i data-lucide="x" style="width:14px;height:14px;"></i>
     </button>

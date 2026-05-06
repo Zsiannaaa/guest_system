@@ -88,6 +88,98 @@ function requireLogin(): void {
         header('Location: ' . APP_URL . '/public/auth/login.php');
         exit;
     }
+    autoCheckoutExpiredCampusVisits();
+}
+
+/**
+ * Automatically closes campus visits that were left checked in for more than
+ * 24 hours. This keeps the active visitor list from carrying stale records
+ * when a guard forgets to check someone out.
+ */
+function autoCheckoutExpiredCampusVisits(int $hours = 24): int {
+    static $hasRun = false;
+    if ($hasRun) return 0;
+    $hasRun = true;
+
+    $hours = max(1, min($hours, 168));
+    $db = getDB();
+
+    try {
+        $select = $db->prepare("
+            SELECT visit_id, visit_reference, actual_check_in
+            FROM guest_visits
+            WHERE overall_status = 'checked_in'
+              AND actual_check_in IS NOT NULL
+              AND actual_check_in <= DATE_SUB(NOW(), INTERVAL {$hours} HOUR)
+              AND (purpose_of_visit IS NULL OR purpose_of_visit NOT LIKE '[Guest House]%')
+            ORDER BY actual_check_in ASC
+            LIMIT 100
+        ");
+        $select->execute();
+        $visits = $select->fetchAll();
+
+        if (empty($visits)) return 0;
+
+        $db->beginTransaction();
+
+        $visitUpdate = $db->prepare("
+            UPDATE guest_visits
+            SET overall_status = 'checked_out',
+                actual_check_out = DATE_ADD(actual_check_in, INTERVAL {$hours} HOUR),
+                notes = CONCAT(
+                    COALESCE(NULLIF(notes, ''), ''),
+                    CASE WHEN notes IS NULL OR notes = '' THEN '' ELSE '\n' END,
+                    '[Auto checkout] System closed this visit after {$hours} hours because it was still marked checked in.'
+                )
+            WHERE visit_id = :visit_id
+              AND overall_status = 'checked_in'
+        ");
+
+        $destinationUpdate = $db->prepare("
+            UPDATE visit_destinations
+            SET destination_status = 'completed',
+                completed_time = COALESCE(completed_time, NOW()),
+                notes = CONCAT(
+                    COALESCE(NULLIF(notes, ''), ''),
+                    CASE WHEN notes IS NULL OR notes = '' THEN '' ELSE '\n' END,
+                    '[Auto checkout] Visit was automatically closed after {$hours} hours.'
+                )
+            WHERE visit_id = :visit_id
+              AND destination_status IN ('pending', 'arrived', 'in_service')
+        ");
+
+        $log = $db->prepare("
+            INSERT INTO activity_logs
+                (visit_id, action_type, performed_by_user_id, office_id, description, ip_address)
+            VALUES
+                (:visit_id, 'check_out', NULL, NULL, :description, :ip)
+        ");
+
+        $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        $closed = 0;
+
+        foreach ($visits as $visit) {
+            $visitUpdate->execute([':visit_id' => $visit['visit_id']]);
+            if ($visitUpdate->rowCount() < 1) continue;
+
+            $destinationUpdate->execute([':visit_id' => $visit['visit_id']]);
+            $log->execute([
+                ':visit_id' => $visit['visit_id'],
+                ':description' => "System auto-checked out {$visit['visit_reference']} after {$hours} hours.",
+                ':ip' => $ip,
+            ]);
+            $closed++;
+        }
+
+        $db->commit();
+        return $closed;
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        error_log('Auto checkout failed: ' . $e->getMessage());
+        return 0;
+    }
 }
 
 /**
@@ -205,6 +297,7 @@ function createUserSession(array $user): void {
     $_SESSION['last_activity'] = time();
     $_SESSION['login_time']    = time();
     $_SESSION['ip_address']    = $_SERVER['REMOTE_ADDR'] ?? '';
+    $_SESSION['play_login_sound'] = 1;
 
     // Generate a fresh CSRF token on login
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
