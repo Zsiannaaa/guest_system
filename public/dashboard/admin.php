@@ -20,18 +20,15 @@ $stats = getAdminDashboardStats($db);
 extract($stats);
 $activeVisitors = getActiveVisitorsForDashboard($db);
 $recentVisits = getRecentVisitsForDashboard($db);
-$byOffice = getVisitorsByOfficeForDate($db, $today);
-$officeChartDate = $today;
-$officeChartTitle = 'Visitors by Office (Today)';
-
-if (empty($byOffice)) {
-    $latestVisitDate = getLatestVisitDate($db);
-    if ($latestVisitDate) {
-        $byOffice = getVisitorsByOfficeForDate($db, $latestVisitDate);
-        $officeChartDate = $latestVisitDate;
-        $officeChartTitle = 'Visitors by Office (Latest Records)';
-    }
-}
+$officeChartScope = ($_GET['office_scope'] ?? 'today') === 'all' ? 'all' : 'today';
+$officeChartIsAllTime = $officeChartScope === 'all';
+$byOffice = $officeChartIsAllTime
+    ? getVisitorsByOfficeAllTime($db)
+    : getVisitorsByOfficeForDate($db, $today);
+$officeChartTitle = $officeChartIsAllTime ? 'Visitors by Office (All Time)' : 'Visitors by Office (Today)';
+$officeChartToggleUrl = APP_URL . '/public/dashboard/admin.php' . ($officeChartIsAllTime ? '' : '?office_scope=all');
+$officeChartToggleLabel = $officeChartIsAllTime ? 'Show today' : 'Show all time';
+$officeChartScopeLabel = $officeChartIsAllTime ? 'System history' : date('M j, Y');
 
 $officeChartTotal = array_sum(array_map('intval', array_column($byOffice, 'total')));
 $officeChartRows = array_slice($byOffice, 0, 5);
@@ -181,8 +178,16 @@ include __DIR__ . '/../../includes/header.php';
   <!-- Visitors by Office (Donut) -->
   <div class="card office-chart-card">
     <div class="card-header">
-      <?= e($officeChartTitle) ?>
-      <a href="<?= APP_URL ?>/public/reports/index.php" class="view-all">View report</a>
+      <div class="office-chart-heading">
+        <span><?= e($officeChartTitle) ?></span>
+        <small><?= e($officeChartScopeLabel) ?></small>
+      </div>
+      <div class="office-chart-actions">
+        <a href="<?= APP_URL ?>/public/reports/index.php" class="view-all">View report</a>
+        <a href="<?= e($officeChartToggleUrl) ?>" class="office-chart-filter" title="<?= e($officeChartToggleLabel) ?>" aria-label="<?= e($officeChartToggleLabel) ?>">
+          <i data-lucide="<?= $officeChartIsAllTime ? 'calendar-days' : 'filter' ?>"></i>
+        </a>
+      </div>
     </div>
     <div class="card-body office-chart-body">
       <div class="office-chart-wrap">

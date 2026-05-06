@@ -99,6 +99,22 @@ function getVisitorsByOfficeForDate(PDO $pdo, string $date): array {
 }
 
 /**
+ * Fetch visitors by office across all recorded visit history.
+ */
+function getVisitorsByOfficeAllTime(PDO $pdo): array {
+    // Study query: SQL query: reads rows from visit_destinations, offices, guest_visits for dashboard chart totals.
+    $stmt = $pdo->query("
+        SELECT o.office_name, COUNT(vd.destination_id) AS total
+        FROM visit_destinations vd
+        JOIN offices o ON vd.office_id = o.office_id
+        JOIN guest_visits gv ON vd.visit_id = gv.visit_id
+        GROUP BY o.office_id
+        ORDER BY total DESC
+    ");
+    return $stmt->fetchAll();
+}
+
+/**
  * Study function: Loads get latest visit date records for the page/controller.
  */
 function getLatestVisitDate(PDO $pdo): ?string {

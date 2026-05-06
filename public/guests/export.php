@@ -12,8 +12,8 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
-// Study security: this page requires an active login before any private data is shown.
-requireLogin();
+// Study security: only gate/admin roles can export guest personal data.
+requireRole([ROLE_ADMIN, ROLE_GUARD]);
 
 $db = getDB();
 $guestId = (int)($_GET['id'] ?? 0);

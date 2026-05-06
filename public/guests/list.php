@@ -10,8 +10,8 @@ require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../modules/guests/guests_module.php';
-// Study security: this page requires an active login before any private data is shown.
-requireLogin();
+// Study security: only gate/admin roles can browse the full guest directory.
+requireRole([ROLE_ADMIN, ROLE_GUARD]);
 $pageTitle = 'Guest Directory';
 $db = getDB();
 

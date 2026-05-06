@@ -1,0 +1,9 @@
+Options -Indexes
+
+RewriteEngine On
+RewriteRule ^(config|includes|modules|db_backups|docs|tools)(/|$) - [F,L]
+RewriteRule (^|/)\. - [F,L]
+
+<FilesMatch "\.(sql|md|py)$">
+    Require all denied
+</FilesMatch>
